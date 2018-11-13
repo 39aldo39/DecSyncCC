@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="grey200">#eeeeee</color>
+    <color name="grey500">#9E9E9E</color>
+
+    <color name="primaryColor">#64b5f6</color>
+    <color name="primaryDarkColor">#0277bd</color>
+    <color name="secondaryColor">#e040fb</color>
+    <color name="primaryTextColor">#000000</color>
+    <color name="secondaryTextColor">@color/grey500</color>
+</resources>

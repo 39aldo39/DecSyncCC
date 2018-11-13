@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">DecSync CC</string>
+    <string name="title_activity_main">DecSync CC</string>
+    <string name="title_activity_settings">Settings</string>
+
+    <string name="account_name_contacts">DecSync Contacts</string>
+    <string name="account_name_calendars">DecSync Calendars</string>
+    <string name="account_type_contacts">org.decsync.contacts</string>
+    <string name="account_type_calendars">org.decsync.calendars</string>
+
+    <!-- MainActivity -->
+    <string name="account_contacts">Address books</string>
+    <string name="account_calendars">Calendars</string>
+    <string name="account_synchronize_this_collection">synchronize this collection</string>
+    <string name="account_refresh_address_book_list">Refresh address book list</string>
+    <string name="account_create_new_address_book">Create new address book</string>
+    <string name="account_refresh_calendar_list">Refresh calendar list</string>
+    <string name="account_create_new_calendar">Create new calendar</string>
+    <string name="rename_collection">Rename collection</string>
+    <string name="delete_collection">Delete collection</string>
+</resources>

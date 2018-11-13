@@ -1,0 +1,1 @@
+include ':app', ':libdecsync', ':vcard4android', ':ical4android'

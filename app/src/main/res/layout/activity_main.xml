@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright © 2013 – 2016 Ricki Hirner (bitfire web engineering).
+  ~ All rights reserved. This program and the accompanying materials
+  ~ are made available under the terms of the GNU Public License v3.0
+  ~ which accompanies this distribution, and is available at
+  ~ http://www.gnu.org/licenses/gpl.html
+  -->
+
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/parent"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="@dimen/activity_margin">
+
+        <android.support.v7.widget.CardView
+            android:id="@+id/address_books_cardview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            app:cardUseCompatPadding="true"
+            app:cardElevation="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <android.support.v7.widget.Toolbar
+                    android:id="@+id/contacts_menu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:theme="@style/toolbar_theme"
+                    style="@style/toolbar_style"
+                    app:navigationIcon="@drawable/ic_people_light"
+                    app:title="@string/account_contacts"
+                    android:elevation="2dp" tools:ignore="UnusedAttribute"/>
+
+                <org.decsync.cc.MaximizedListView
+                    android:id="@+id/address_books"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:choiceMode="singleChoice"/>
+
+            </LinearLayout>
+
+        </android.support.v7.widget.CardView>
+
+        <android.support.v7.widget.CardView
+            android:id="@+id/calendars_cardview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardUseCompatPadding="true"
+            app:cardElevation="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <android.support.v7.widget.Toolbar
+                    android:id="@+id/calendars_menu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:theme="@style/toolbar_theme"
+                    style="@style/toolbar_style"
+                    app:navigationIcon="@drawable/ic_event_light"
+                    app:title="@string/account_calendars"
+                    android:elevation="2dp" tools:ignore="UnusedAttribute"/>
+
+                <org.decsync.cc.MaximizedListView
+                    android:id="@+id/calendars"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:choiceMode="multipleChoice"
+                    android:descendantFocusability="beforeDescendants"/>
+
+            </LinearLayout>
+
+        </android.support.v7.widget.CardView>
+
+    </LinearLayout>
+</ScrollView>
