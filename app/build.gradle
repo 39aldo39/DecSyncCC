@@ -13,7 +13,6 @@ android {
         versionName "1.0.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
-        javaCompileOptions.annotationProcessorOptions.includeCompileClasspath = true // TEMP
     }
 
     compileOptions {
@@ -30,9 +29,6 @@ android {
 }
 
 repositories {
-    maven {
-        url 'http://guardian.github.com/maven/repo-releases'
-    }
     google()
 }
 
