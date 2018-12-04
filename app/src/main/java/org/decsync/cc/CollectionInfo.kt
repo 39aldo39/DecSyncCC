@@ -23,6 +23,7 @@ import android.accounts.Account
 import android.accounts.AccountManager
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import android.provider.CalendarContract
 import android.provider.CalendarContract.Calendars
 import android.support.v4.content.ContextCompat
@@ -69,12 +70,20 @@ class CollectionInfo (
             Type.CALENDAR -> {
                 var result = false
                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED) {
-                    context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY).use { provider ->
-                        provider.query(syncAdapterUri(account, Calendars.CONTENT_URI), emptyArray(),
-                                "${Calendars.NAME}=?", arrayOf(id), null).use { cursor ->
-                            if (cursor.moveToFirst()) {
-                                result = true
+                    context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
+                        try {
+                            provider.query(syncAdapterUri(account, Calendars.CONTENT_URI), emptyArray(),
+                                    "${Calendars.NAME}=?", arrayOf(id), null).use { cursor ->
+                                if (cursor.moveToFirst()) {
+                                    result = true
+                                }
                             }
+                        } finally {
+                            if (Build.VERSION.SDK_INT >= 24)
+                                provider.close()
+                            else
+                                @Suppress("DEPRECATION")
+                                provider.release()
                         }
                     }
                 }

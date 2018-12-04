@@ -221,8 +221,16 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener {
                     AsyncTask.execute {
                         val decsync = getDecsync(info)
                         decsync.initStoredEntries()
-                        contentResolver.acquireContentProviderClient(ContactsContract.AUTHORITY).use { provider ->
-                            decsync.executeStoredEntries(listOf("resources"), Extra(info, this, provider))
+                        contentResolver.acquireContentProviderClient(ContactsContract.AUTHORITY)?.let { provider ->
+                            try {
+                                decsync.executeStoredEntries(listOf("resources"), Extra(info, this, provider))
+                            } finally {
+                                if (Build.VERSION.SDK_INT >= 24)
+                                    provider.close()
+                                else
+                                    @Suppress("DEPRECATION")
+                                    provider.release()
+                            }
                         }
                     }
                 } else {
@@ -246,29 +254,37 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener {
                     ActivityCompat.requestPermissions(this, permissions, 0)
                     return@OnItemClickListener
                 }
-                contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY).use { provider ->
-                    if (nowChecked) {
-                        val values = ContentValues()
-                        values.put(Calendars.ACCOUNT_NAME, account.name)
-                        values.put(Calendars.ACCOUNT_TYPE, account.type)
-                        values.put(Calendars.OWNER_ACCOUNT, account.name)
-                        values.put(Calendars.VISIBLE, 1)
-                        values.put(Calendars.SYNC_EVENTS, 1)
-                        values.put(Calendars.CALENDAR_ACCESS_LEVEL, Calendars.CAL_ACCESS_OWNER)
-                        values.put(Calendars.NAME, info.id)
-                        values.put(Calendars.CALENDAR_DISPLAY_NAME, info.name)
-                        Decsync.getStoredStaticValue(info.dir, listOf("info"), "color")?.let { color ->
-                            addColor(values, color)
+                contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
+                    try {
+                        if (nowChecked) {
+                            val values = ContentValues()
+                            values.put(Calendars.ACCOUNT_NAME, account.name)
+                            values.put(Calendars.ACCOUNT_TYPE, account.type)
+                            values.put(Calendars.OWNER_ACCOUNT, account.name)
+                            values.put(Calendars.VISIBLE, 1)
+                            values.put(Calendars.SYNC_EVENTS, 1)
+                            values.put(Calendars.CALENDAR_ACCESS_LEVEL, Calendars.CAL_ACCESS_OWNER)
+                            values.put(Calendars.NAME, info.id)
+                            values.put(Calendars.CALENDAR_DISPLAY_NAME, info.name)
+                            Decsync.getStoredStaticValue(info.dir, listOf("info"), "color")?.let { color ->
+                                addColor(values, color)
+                            }
+                            provider.insert(syncAdapterUri(account, Calendars.CONTENT_URI), values)
+                            AsyncTask.execute {
+                                val decsync = getDecsync(info)
+                                decsync.initStoredEntries()
+                                decsync.executeStoredEntries(listOf("resources"), Extra(info, this, provider))
+                            }
+                        } else {
+                            provider.delete(syncAdapterUri(account, Calendars.CONTENT_URI),
+                                    "${Calendars.NAME}=?", arrayOf(info.id))
                         }
-                        provider.insert(syncAdapterUri(account, Calendars.CONTENT_URI), values)
-                        AsyncTask.execute {
-                            val decsync = getDecsync(info)
-                            decsync.initStoredEntries()
-                            decsync.executeStoredEntries(listOf("resources"), Extra(info, this, provider))
-                        }
-                    } else {
-                        provider.delete(syncAdapterUri(account, Calendars.CONTENT_URI),
-                                "${Calendars.NAME}=?", arrayOf(info.id))
+                    } finally {
+                        if (Build.VERSION.SDK_INT >= 24)
+                            provider.close()
+                        else
+                            @Suppress("DEPRECATION")
+                            provider.release()
                     }
                 }
             }
@@ -351,19 +367,27 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener {
                     CollectionInfo.Type.ADDRESS_BOOK -> ContactsContract.AUTHORITY
                     CollectionInfo.Type.CALENDAR -> CalendarContract.AUTHORITY
                 }
-        ).use { provider ->
-            val extra = Extra(info, this, provider)
-            when (info.type) {
-                CollectionInfo.Type.ADDRESS_BOOK -> {
-                    (ContactDecsyncUtils::InfoListener)().onSubfileEntryUpdate(Decsync.Entry(key, value), extra)
-                    getDecsync(info).setEntry(listOf("info"), key, value)
-                    loadBooks()
+        )?.let { provider ->
+            try {
+                val extra = Extra(info, this, provider)
+                when (info.type) {
+                    CollectionInfo.Type.ADDRESS_BOOK -> {
+                        (ContactDecsyncUtils::InfoListener)().onSubfileEntryUpdate(Decsync.Entry(key, value), extra)
+                        getDecsync(info).setEntry(listOf("info"), key, value)
+                        loadBooks()
+                    }
+                    CollectionInfo.Type.CALENDAR -> {
+                        (CalendarDecsyncUtils::InfoListener)().onSubfileEntryUpdate(Decsync.Entry(key, value), extra)
+                        getDecsync(info).setEntry(listOf("info"), key, value)
+                        loadCalendars()
+                    }
                 }
-                CollectionInfo.Type.CALENDAR -> {
-                    (CalendarDecsyncUtils::InfoListener)().onSubfileEntryUpdate(Decsync.Entry(key, value), extra)
-                    getDecsync(info).setEntry(listOf("info"), key, value)
-                    loadCalendars()
-                }
+            } finally {
+                if (Build.VERSION.SDK_INT >= 24)
+                    provider.close()
+                else
+                    @Suppress("DEPRECATION")
+                    provider.release()
             }
         }
     }
