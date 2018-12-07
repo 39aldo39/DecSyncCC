@@ -15,8 +15,10 @@ import android.accounts.AccountManager
 import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.net.Uri
 import android.os.AsyncTask
 import android.os.Build
 import android.os.Bundle
@@ -184,6 +186,13 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener {
                         }
                         .setNegativeButton("Cancel") { _, _ -> }
                         .show()
+            }
+            R.id.change_calendar_colors -> {
+                val intent = packageManager.getLaunchIntentForPackage("ch.ihdg.calendarcolor")
+                        ?: Intent(Intent.ACTION_VIEW).apply {
+                            data = Uri.parse("https://f-droid.org/app/ch.ihdg.calendarcolor")
+                        }
+                startActivity(intent)
             }
         }
         return false

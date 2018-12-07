@@ -16,6 +16,7 @@
     <string name="account_create_new_address_book">Create new address book</string>
     <string name="account_refresh_calendar_list">Refresh calendar list</string>
     <string name="account_create_new_calendar">Create new calendar</string>
+    <string name="change_calendar_colors">Change calendar colors</string>
     <string name="rename_collection">Rename collection</string>
     <string name="delete_collection">Delete collection</string>
 </resources>
