@@ -73,7 +73,7 @@ class CalendarsService : Service() {
                     val oldColor = calCursor.getInt(4)
 
                     val calendar = AndroidCalendar.findByID(account, provider, CalendarFactory, calendarId)
-                    val info = CollectionInfo(CollectionInfo.Type.CALENDAR, decsyncId, name)
+                    val info = CollectionInfo(CollectionInfo.Type.CALENDAR, decsyncId, name, context)
                     val decsync = getDecsync(info)
 
                     // Detect changed color

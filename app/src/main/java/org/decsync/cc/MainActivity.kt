@@ -45,7 +45,7 @@ import java.util.Random
 
 const val TAG = "DecSyncCC"
 
-class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener {
+class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupMenu.OnMenuItemClickListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -93,13 +93,14 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener {
 
     private fun loadBooks() {
         val adapter = AddressBookAdapter(this)
+        val decsyncBaseDir = PrefUtils.getDecsyncDir(this)
 
         adapter.clear()
         adapter.addAll(
-                listDecsyncCollections(null, "contacts").map {
-                    val dir = getDecsyncSubdir(null, "contacts", it)
+                listDecsyncCollections(decsyncBaseDir, "contacts").map {
+                    val dir = getDecsyncSubdir(decsyncBaseDir, "contacts", it)
                     val name = Decsync.getStoredStaticValue(dir, listOf("info"), "name") as? String ?: it
-                    CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, it, name)
+                    CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, it, name, this)
                 }
         )
 
@@ -109,18 +110,36 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener {
 
     private fun loadCalendars() {
         val adapter = CalendarAdapter(this)
+        val decsyncBaseDir = PrefUtils.getDecsyncDir(this)
 
         adapter.clear()
         adapter.addAll(
-                listDecsyncCollections(null, "calendars").map {
-                    val dir = getDecsyncSubdir(null, "calendars", it)
+                listDecsyncCollections(decsyncBaseDir, "calendars").map {
+                    val dir = getDecsyncSubdir(decsyncBaseDir, "calendars", it)
                     val name = Decsync.getStoredStaticValue(dir, listOf("info"), "name") as? String ?: it
-                    CollectionInfo(CollectionInfo.Type.CALENDAR, it, name)
+                    CollectionInfo(CollectionInfo.Type.CALENDAR, it, name, this)
                 }
         )
 
         calendars.adapter = adapter
         calendars.onItemClickListener = onItemClickListener
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.main_activity, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.settings -> {
+                val intent = Intent(this, GeneralPrefsActivity::class.java)
+                startActivity(intent)
+            }
+            else ->
+                return super.onOptionsItemSelected(item)
+        }
+        return true
     }
 
     override fun onMenuItemClick(item: MenuItem): Boolean {
@@ -148,7 +167,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener {
                             val name = input.text.toString()
                             if (!name.isBlank()) {
                                 val id = "colID%05d".format(Random().nextInt(100000))
-                                val info = CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, id, name)
+                                val info = CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, id, name, this)
                                 Decsync<Unit>(info.dir, ownAppId, emptyList()).setEntry(listOf("info"), "name", name)
                                 loadBooks()
                             }
@@ -179,7 +198,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener {
                             val name = input.text.toString()
                             if (!name.isBlank()) {
                                 val id = "colID%05d".format(Random().nextInt(100000))
-                                val info = CollectionInfo(CollectionInfo.Type.CALENDAR, id, name)
+                                val info = CollectionInfo(CollectionInfo.Type.CALENDAR, id, name, this)
                                 Decsync<Unit>(info.dir, ownAppId, emptyList()).setEntry(listOf("info"), "name", name)
                                 loadCalendars()
                             }

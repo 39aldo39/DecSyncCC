@@ -28,15 +28,15 @@ import android.provider.CalendarContract
 import android.provider.CalendarContract.Calendars
 import android.support.v4.content.ContextCompat
 import org.decsync.cc.contacts.syncAdapterUri
-import org.decsync.library.Decsync
 import org.decsync.library.getDecsyncSubdir
 
 class CollectionInfo (
         val type: Type,
         val id: String,
-        val name: String
+        val name: String,
+        context: Context
 ) {
-    val dir = getDecsyncSubdir(null, type.toString(), id)
+    val dir = getDecsyncSubdir(PrefUtils.getDecsyncDir(context), type.toString(), id)
 
     enum class Type {
         ADDRESS_BOOK,

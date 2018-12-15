@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content">
+
+    <PreferenceCategory
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:title="@string/settings_category_decsync">
+
+        <PreferenceScreen
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:title="@string/settings_decsync_about">
+            <intent android:action="android.intent.action.VIEW"
+                    android:data="https://github.com/39aldo39/DecSync" />
+        </PreferenceScreen>
+
+        <Preference
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:key="decsync.directory"
+            android:title="@string/settings_decsync_directory"/>
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

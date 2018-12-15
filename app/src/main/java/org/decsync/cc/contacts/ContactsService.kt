@@ -63,7 +63,7 @@ class ContactsService : Service() {
             }
 
             val bookId = AccountManager.get(context).getUserData(account, "id")
-            val info = CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, bookId, account.name)
+            val info = CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, bookId, account.name, context)
             val decsync = getDecsync(info)
             val addressBook = AndroidAddressBook(account, provider, LocalContact.ContactFactory, LocalContact.GroupFactory)
 
