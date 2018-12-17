@@ -33,6 +33,7 @@ import org.json.JSONObject
 import java.io.StringReader
 
 const val TAG = "DecSync Contacts"
+const val KEY_NUM_PROCESSED_ENTRIES = "num-processed-entries"
 
 object ContactDecsyncUtils {
     class InfoListener : OnSubfileEntryUpdateListener<Extra> {
@@ -88,6 +89,7 @@ object ContactDecsyncUtils {
                     // Create the new account if needed
                     accountManager.addAccountExplicitly(newAccount, null, null)
                     accountManager.setUserData(newAccount, "id", extra.info.id) // Separate, since the account may exist
+                    accountManager.setUserData(newAccount, KEY_NUM_PROCESSED_ENTRIES, null)
 
                     // Move the contacts to the new account
                     val values = ContentValues()
@@ -143,6 +145,7 @@ object ContactDecsyncUtils {
                         val values = ContentValues()
                         values.put(RawContacts._ID, id)
                         LocalContact(addressBook, values).delete()
+                        addToNumProcessedEntries(extra, -1)
                     }
                 }
                 is String -> {
@@ -159,6 +162,7 @@ object ContactDecsyncUtils {
                     if (id == null) {
                         Log.d(TAG, "Add contact $uid")
                         LocalContact(addressBook, contact, uid, bookId).add()
+                        addToNumProcessedEntries(extra, 1)
                     } else {
                         Log.d(TAG, "Update contact $uid")
                         val values = ContentValues()

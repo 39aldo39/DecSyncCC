@@ -31,6 +31,7 @@ import android.support.v4.content.ContextCompat
 import at.bitfire.ical4android.AndroidCalendar
 import org.decsync.cc.CollectionInfo
 import org.decsync.cc.Extra
+import org.decsync.cc.addToNumProcessedEntries
 import org.decsync.cc.calendars.CalendarDecsyncUtils.CalendarFactory
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.cc.getDecsync
@@ -74,6 +75,7 @@ class CalendarsService : Service() {
 
                     val calendar = AndroidCalendar.findByID(account, provider, CalendarFactory, calendarId)
                     val info = CollectionInfo(CollectionInfo.Type.CALENDAR, decsyncId, name, context)
+                    val extra = Extra(info, context, provider)
                     val decsync = getDecsync(info)
 
                     // Detect changed color
@@ -96,24 +98,29 @@ class CalendarsService : Service() {
                             val values = ContentValues()
                             values.put(Events._ID, id)
                             LocalEvent(calendar, values).writeDeleteAction(decsync)
+                            addToNumProcessedEntries(extra, -1)
                         }
                     }
 
                     // Detect dirty events
                     provider.query(syncAdapterUri(account, Events.CONTENT_URI),
-                            arrayOf(Events._ID, Events.ORIGINAL_ID),
+                            arrayOf(Events._ID, Events.ORIGINAL_ID, Events._SYNC_ID),
                             "${Events.CALENDAR_ID}=? AND ${Events.DIRTY}=1",
                             arrayOf(calendarId.toString()), null).use { cursor ->
                         while (cursor.moveToNext()) {
                             val id = cursor.getString(1) ?: cursor.getString(0)
+                            val newEvent = cursor.isNull(1) && cursor.isNull(2)
 
                             val values = ContentValues()
                             values.put(Events._ID, id)
                             LocalEvent(calendar, values).writeUpdateAction(decsync)
+                            if (newEvent) {
+                                addToNumProcessedEntries(extra, 1)
+                            }
                         }
                     }
 
-                    decsync.executeAllNewEntries(Extra(info, context, provider))
+                    decsync.executeAllNewEntries(extra)
                 }
             }
         }

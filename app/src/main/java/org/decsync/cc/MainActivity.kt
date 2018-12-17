@@ -24,7 +24,9 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.CalendarContract
 import android.provider.CalendarContract.Calendars
+import android.provider.CalendarContract.Events
 import android.provider.ContactsContract
+import android.provider.ContactsContract.RawContacts
 import android.support.v4.app.ActivityCompat
 import android.support.v4.app.NotificationManagerCompat
 import android.support.v4.content.ContextCompat
@@ -35,13 +37,17 @@ import android.util.Log
 import android.view.*
 import android.widget.*
 import kotlinx.android.synthetic.main.activity_main.*
+import org.decsync.cc.calendars.COLUMN_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.calendars.CalendarDecsyncUtils
 import org.decsync.cc.calendars.CalendarDecsyncUtils.addColor
 import org.decsync.cc.contacts.ContactDecsyncUtils
+import org.decsync.cc.contacts.KEY_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.library.Decsync
+import org.decsync.library.OnEntryUpdateListener
 import org.decsync.library.getDecsyncSubdir
 import org.decsync.library.listDecsyncCollections
+import org.json.JSONObject
 import java.util.Random
 
 const val TAG = "DecSyncCC"
@@ -255,11 +261,13 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                         with(NotificationManagerCompat.from(this)) {
                             notify(info.notificationId, builder.build())
                         }
-                        val decsync = getDecsync(info)
-                        decsync.initStoredEntries()
                         contentResolver.acquireContentProviderClient(ContactsContract.AUTHORITY)?.let { provider ->
                             try {
-                                decsync.executeStoredEntries(listOf("resources"), Extra(info, this, provider))
+                                val decsync = getDecsync(info)
+                                val extra = Extra(info, this, provider)
+                                setNumProcessedEntries(extra, 0)
+                                decsync.initStoredEntries()
+                                decsync.executeStoredEntries(listOf("resources"), extra)
                             } finally {
                                 if (Build.VERSION.SDK_INT >= 24)
                                     provider.close()
@@ -318,8 +326,10 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                     notify(info.notificationId, builder.build())
                                 }
                                 val decsync = getDecsync(info)
+                                val extra = Extra(info, this, provider)
+                                setNumProcessedEntries(extra, 0)
                                 decsync.initStoredEntries()
-                                decsync.executeStoredEntries(listOf("resources"), Extra(info, this, provider))
+                                decsync.executeStoredEntries(listOf("resources"), extra)
                                 with(NotificationManagerCompat.from(this)) {
                                     cancel(info.notificationId)
                                 }
@@ -399,6 +409,89 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             .setNegativeButton("Cancel") { _, _ -> }
                             .show()
                 }
+                R.id.entries_count -> {
+                    var androidEntries: Int? = null
+                    var processedEntries: Int? = null
+                    info.getProviderClient(this)?.let { provider ->
+                        try {
+                            when (info.type) {
+                                CollectionInfo.Type.ADDRESS_BOOK -> {
+                                    processedEntries = AccountManager.get(this).getUserData(info.getAccount(this), KEY_NUM_PROCESSED_ENTRIES)?.toInt()
+                                    provider.query(syncAdapterUri(info.getAccount(this), RawContacts.CONTENT_URI),
+                                            emptyArray(), "${RawContacts.DELETED}=0",
+                                            null, null).use { cursor ->
+                                        androidEntries = cursor.count
+                                    }
+                                }
+                                CollectionInfo.Type.CALENDAR -> {
+                                    val calendarId = provider.query(syncAdapterUri(info.getAccount(this), Calendars.CONTENT_URI),
+                                            arrayOf(Calendars._ID, COLUMN_NUM_PROCESSED_ENTRIES), "${Calendars.NAME}=?",
+                                            arrayOf(info.id), null).use { calCursor ->
+                                        if (calCursor.moveToFirst()) {
+                                            processedEntries = if (calCursor.isNull(1)) null else calCursor.getInt(1)
+                                            calCursor.getLong(0)
+                                        } else {
+                                            null
+                                        }
+                                    }
+                                    provider.query(syncAdapterUri(info.getAccount(this), Events.CONTENT_URI),
+                                            emptyArray(), "${Events.CALENDAR_ID}=? AND ${Events.ORIGINAL_ID} IS NULL AND ${Events.DELETED}=0",
+                                            arrayOf(calendarId.toString()), null).use { cursor ->
+                                        androidEntries = cursor.count
+                                    }
+                                }
+                            }
+                        } finally {
+                            if (Build.VERSION.SDK_INT >= 24)
+                                provider.close()
+                            else
+                                @Suppress("DEPRECATION")
+                                provider.release()
+                        }
+
+                        class DecsyncEntriesTask(
+                                val mDialog: AlertDialog,
+                                val mMessage: String,
+                                val mInfo: CollectionInfo
+                        ) : AsyncTask<Void, Void, Int>() {
+                            override fun onPreExecute() {
+                                super.onPreExecute()
+                                mDialog.setMessage(mMessage.format("…"))
+                                mDialog.show()
+                            }
+
+                            override fun doInBackground(vararg params: Void): Int {
+                                class Extra(var count: Int)
+                                val countListener = object : OnEntryUpdateListener<Extra> {
+                                    override fun matchesPath(path: List<String>): Boolean = true
+                                    override fun onEntriesUpdate(path: List<String>, entries: List<Decsync.Entry>, extra: Extra) {
+                                        extra.count += entries.size
+                                    }
+                                }
+                                val countDecsync = Decsync(mInfo.dir, getDecsync(mInfo).latestAppId(), listOf(countListener))
+                                val extra = Extra(0)
+                                countDecsync.executeStoredEntries(listOf("resources"), extra, valuePred = { it != JSONObject.NULL })
+                                return extra.count
+                            }
+
+                            override fun onPostExecute(decsyncEntries: Int) {
+                                super.onPostExecute(decsyncEntries)
+                                mDialog.setMessage(mMessage.format("$decsyncEntries"))
+                            }
+                        }
+
+                        val dialog = AlertDialog.Builder(this)
+                                .setTitle("Entries count")
+                                .setNeutralButton("OK") { dialog, _ ->
+                                    dialog.dismiss()
+                                }
+                                .create()
+                        val message = "Android entries: $androidEntries\n" +
+                                "Processed entries: $processedEntries\n" +
+                                "DecSync entries: %s"
+                        DecsyncEntriesTask(dialog, message, info).execute()
+                    }
+                }
             }
             true
         }
@@ -410,12 +503,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
     private fun setCollectionInfo(info: CollectionInfo, key: Any, value: Any) {
         Log.d(TAG, "Set info for ${info.id} of key $key to value $value")
-        contentResolver.acquireContentProviderClient(
-                when (info.type) {
-                    CollectionInfo.Type.ADDRESS_BOOK -> ContactsContract.AUTHORITY
-                    CollectionInfo.Type.CALENDAR -> CalendarContract.AUTHORITY
-                }
-        )?.let { provider ->
+        info.getProviderClient(this)?.let { provider ->
             try {
                 val extra = Extra(info, this, provider)
                 when (info.type) {

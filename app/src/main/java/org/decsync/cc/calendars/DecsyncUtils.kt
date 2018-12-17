@@ -27,6 +27,7 @@ import android.provider.CalendarContract.Events
 import android.util.Log
 import at.bitfire.ical4android.*
 import org.decsync.cc.Extra
+import org.decsync.cc.addToNumProcessedEntries
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.library.Decsync
 import org.decsync.library.OnSubdirEntryUpdateListener
@@ -36,6 +37,7 @@ import java.io.StringReader
 
 const val TAG = "DecSync Calendars"
 const val COLUMN_OLD_COLOR = Calendars.CAL_SYNC1
+const val COLUMN_NUM_PROCESSED_ENTRIES = Calendars.CAL_SYNC2
 
 object CalendarDecsyncUtils {
     class InfoListener : OnSubfileEntryUpdateListener<Extra> {
@@ -144,6 +146,7 @@ object CalendarDecsyncUtils {
                         val values = ContentValues()
                         values.put(Events._ID, id)
                         LocalEvent(calendar, values).delete()
+                        addToNumProcessedEntries(extra, -1)
                     }
                 }
                 is String -> {
@@ -165,6 +168,7 @@ object CalendarDecsyncUtils {
                     if (id == null) {
                         Log.d(TAG, "Add event $uid")
                         LocalEvent(calendar, event).add()
+                        addToNumProcessedEntries(extra, 1)
                     } else {
                         Log.i(TAG, "Update event $uid")
                         val values = ContentValues()

@@ -19,6 +19,7 @@
     <string name="change_calendar_colors">Change calendar colors</string>
     <string name="rename_collection">Rename collection</string>
     <string name="delete_collection">Delete collection</string>
+    <string name="entries_count">Entries count</string>
     <string name="account_settings">Settings</string>
 
     <!-- GeneralPrefsActivity -->

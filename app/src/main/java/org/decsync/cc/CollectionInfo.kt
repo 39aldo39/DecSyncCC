@@ -21,11 +21,14 @@ package org.decsync.cc
 import android.Manifest
 import android.accounts.Account
 import android.accounts.AccountManager
+import android.content.ContentProvider
+import android.content.ContentProviderClient
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.CalendarContract
 import android.provider.CalendarContract.Calendars
+import android.provider.ContactsContract
 import android.support.v4.content.ContextCompat
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.library.getDecsyncSubdir
@@ -61,6 +64,14 @@ class CollectionInfo (
         }
         return Account(accountName, accountType)
     }
+
+    fun getProviderClient(context: Context): ContentProviderClient? =
+        context.contentResolver.acquireContentProviderClient(
+                when (type) {
+                    CollectionInfo.Type.ADDRESS_BOOK -> ContactsContract.AUTHORITY
+                    CollectionInfo.Type.CALENDAR -> CalendarContract.AUTHORITY
+                }
+        )
 
     fun isEnabled(context: Context): Boolean {
         val account = getAccount(context)

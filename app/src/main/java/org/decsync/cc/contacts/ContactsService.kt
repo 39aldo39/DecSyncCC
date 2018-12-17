@@ -64,6 +64,7 @@ class ContactsService : Service() {
 
             val bookId = AccountManager.get(context).getUserData(account, "id")
             val info = CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, bookId, account.name, context)
+            val extra = Extra(info, context, provider)
             val decsync = getDecsync(info)
             val addressBook = AndroidAddressBook(account, provider, LocalContact.ContactFactory, LocalContact.GroupFactory)
 
@@ -80,26 +81,31 @@ class ContactsService : Service() {
                     values.put(RawContacts._ID, id)
                     values.put(LocalContact.COLUMN_LOCAL_UID, uid)
                     LocalContact(addressBook, values).writeDeleteAction(decsync)
+                    addToNumProcessedEntries(extra, -1)
                 }
             }
 
             // Detect dirty contacts
             provider.query(syncAdapterUri(account, RawContacts.CONTENT_URI),
-                    arrayOf(RawContacts._ID, LocalContact.COLUMN_LOCAL_UID),
+                    arrayOf(RawContacts._ID, LocalContact.COLUMN_LOCAL_UID, RawContacts.SOURCE_ID),
                     "${RawContacts.DIRTY}=1", null, null).use { cursor ->
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(0)
                     val uid = cursor.getString(1)
+                    val newContact = cursor.isNull(2)
 
                     val values = ContentValues()
                     values.put(RawContacts._ID, id)
                     values.put(LocalContact.COLUMN_LOCAL_UID, uid)
                     values.put(LocalContact.COLUMN_LOCAL_BOOKID, bookId)
                     LocalContact(addressBook, values).writeUpdateAction(decsync)
+                    if (newContact) {
+                        addToNumProcessedEntries(extra, 1)
+                    }
                 }
             }
 
-            decsync.executeAllNewEntries(Extra(info, context, provider))
+            decsync.executeAllNewEntries(extra)
         }
     }
 }
