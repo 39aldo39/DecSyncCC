@@ -26,6 +26,7 @@ import android.provider.CalendarContract
 import android.provider.CalendarContract.Calendars
 import android.provider.ContactsContract
 import android.support.v4.app.ActivityCompat
+import android.support.v4.app.NotificationManagerCompat
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
@@ -223,7 +224,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
         val list = parent as ListView
         val adapter = list.adapter as ArrayAdapter<CollectionInfo>
-        val info = adapter.getItem(position)
+        val info = adapter.getItem(position)!!
         val nowChecked = !info.isEnabled(this)
 
         val account = info.getAccount(this)
@@ -247,6 +248,13 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     ContentResolver.setSyncAutomatically(account, ContactsContract.AUTHORITY, true)
                     ContentResolver.addPeriodicSync(account, ContactsContract.AUTHORITY, Bundle(), 60 * 60)
                     AsyncTask.execute {
+                        val builder = initSyncNotificationBuilder(this).apply {
+                            setSmallIcon(R.drawable.ic_notification)
+                            setContentTitle("Adding contacts of ${info.name}")
+                        }
+                        with(NotificationManagerCompat.from(this)) {
+                            notify(info.notificationId, builder.build())
+                        }
                         val decsync = getDecsync(info)
                         decsync.initStoredEntries()
                         contentResolver.acquireContentProviderClient(ContactsContract.AUTHORITY)?.let { provider ->
@@ -259,6 +267,9 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                     @Suppress("DEPRECATION")
                                     provider.release()
                             }
+                        }
+                        with(NotificationManagerCompat.from(this)) {
+                            cancel(info.notificationId)
                         }
                     }
                 } else {
@@ -299,9 +310,19 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             }
                             provider.insert(syncAdapterUri(account, Calendars.CONTENT_URI), values)
                             AsyncTask.execute {
+                                val builder = initSyncNotificationBuilder(this).apply {
+                                    setSmallIcon(R.drawable.ic_notification)
+                                    setContentTitle("Adding events of ${info.name}")
+                                }
+                                with(NotificationManagerCompat.from(this)) {
+                                    notify(info.notificationId, builder.build())
+                                }
                                 val decsync = getDecsync(info)
                                 decsync.initStoredEntries()
                                 decsync.executeStoredEntries(listOf("resources"), Extra(info, this, provider))
+                                with(NotificationManagerCompat.from(this)) {
+                                    cancel(info.notificationId)
+                                }
                             }
                         } else {
                             provider.delete(syncAdapterUri(account, Calendars.CONTENT_URI),
@@ -320,9 +341,8 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         adapter.notifyDataSetChanged()
     }
 
-
     private val onActionOverflowListener = { anchor: View, info: CollectionInfo ->
-        val popup = PopupMenu(this, anchor, Gravity.RIGHT)
+        val popup = PopupMenu(this, anchor, Gravity.END)
         popup.inflate(R.menu.account_collection_operations)
 
         popup.setOnMenuItemClickListener { item ->
@@ -428,7 +448,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     ): ArrayAdapter<CollectionInfo>(context, R.layout.account_address_book_item) {
         override fun getView(position: Int, v: View?, parent: ViewGroup?): View {
             val v = v ?: LayoutInflater.from(context).inflate(R.layout.account_address_book_item, parent, false)
-            val info = getItem(position)
+            val info = getItem(position)!!
             val isChecked = info.isEnabled(context)
 
             val checked: CheckBox = v.findViewById(R.id.checked)
@@ -452,7 +472,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     ): ArrayAdapter<CollectionInfo>(context, R.layout.account_calendar_item) {
         override fun getView(position: Int, v: View?, parent: ViewGroup?): View {
             val v = v ?: LayoutInflater.from(context).inflate(R.layout.account_calendar_item, parent, false)
-            val info = getItem(position)
+            val info = getItem(position)!!
             val isChecked = info.isEnabled(context)
 
             val checked: CheckBox = v.findViewById(R.id.checked)

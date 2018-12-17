@@ -25,4 +25,8 @@
     <string name="settings_category_decsync">DecSync</string>
     <string name="settings_decsync_about">About DecSync</string>
     <string name="settings_decsync_directory">DecSync directory</string>
+
+    <!-- Notification channel -->
+    <string name="channel_init_sync_name">Initial sync</string>
+    <string name="channel_init_sync_description">Notification shown during the initial sync</string>
 </resources>

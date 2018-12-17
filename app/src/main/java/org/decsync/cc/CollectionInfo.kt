@@ -37,6 +37,7 @@ class CollectionInfo (
         context: Context
 ) {
     val dir = getDecsyncSubdir(PrefUtils.getDecsyncDir(context), type.toString(), id)
+    val notificationId = 2 * id.hashCode() + type.ordinal
 
     enum class Type {
         ADDRESS_BOOK,
