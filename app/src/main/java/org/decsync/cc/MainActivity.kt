@@ -12,21 +12,21 @@ package org.decsync.cc
 import android.Manifest
 import android.accounts.Account
 import android.accounts.AccountManager
-import android.content.ContentResolver
-import android.content.ContentValues
-import android.content.Context
-import android.content.Intent
+import android.annotation.TargetApi
+import android.content.*
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.AsyncTask
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.CalendarContract
 import android.provider.CalendarContract.Calendars
 import android.provider.CalendarContract.Events
 import android.provider.ContactsContract
 import android.provider.ContactsContract.RawContacts
+import android.provider.Settings
 import android.support.v4.app.ActivityCompat
 import android.support.v4.app.NotificationManagerCompat
 import android.support.v4.content.ContextCompat
@@ -73,6 +73,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         calendars_menu.inflateMenu(R.menu.calendar_actions)
         calendars_menu.setOnMenuItemClickListener(this)
 
+        // Ask for permissions
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             var permissions = arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE)
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
@@ -88,6 +89,25 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                 permissions += Manifest.permission.WRITE_CALENDAR
             }
             ActivityCompat.requestPermissions(this, permissions, 0)
+        }
+
+        // Ask for exception to App Standby
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && PrefUtils.getHintBatteryOptimizations(this)) {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            if (!powerManager.isIgnoringBatteryOptimizations(BuildConfig.APPLICATION_ID)) {
+                AlertDialog.Builder(this)
+                        .setTitle(R.string.startup_battery_optimization)
+                        .setMessage(R.string.startup_battery_optimization_message)
+                        .setPositiveButton(R.string.startup_battery_optimization_disable) @TargetApi(Build.VERSION_CODES.M) { _, _ ->
+                            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + BuildConfig.APPLICATION_ID))
+                            startActivity(intent)
+                        }
+                        .setNeutralButton(R.string.startup_not_now) { _, _ -> }
+                        .setNegativeButton(R.string.startup_dont_show_again) { _: DialogInterface, _: Int ->
+                            PrefUtils.putHintBatteryOptimizations(this, false)
+                        }
+                        .show()
+            }
         }
     }
 
