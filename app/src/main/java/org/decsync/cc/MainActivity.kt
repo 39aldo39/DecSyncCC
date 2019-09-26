@@ -43,10 +43,7 @@ import org.decsync.cc.calendars.CalendarDecsyncUtils.addColor
 import org.decsync.cc.contacts.ContactDecsyncUtils
 import org.decsync.cc.contacts.KEY_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.contacts.syncAdapterUri
-import org.decsync.library.Decsync
-import org.decsync.library.OnEntryUpdateListener
-import org.decsync.library.getDecsyncSubdir
-import org.decsync.library.listDecsyncCollections
+import org.decsync.library.*
 import org.json.JSONObject
 import java.util.Random
 
@@ -54,8 +51,21 @@ const val TAG = "DecSyncCC"
 
 class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupMenu.OnMenuItemClickListener {
 
+    private var error = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        try {
+            checkDecsyncInfo(PrefUtils.getDecsyncDir(this))
+        } catch (e: DecsyncException) {
+            error = true
+            AlertDialog.Builder(this)
+                .setTitle("DecSync")
+                .setMessage(e.message)
+                .setPositiveButton("OK") { _, _ -> }
+                .show()
+        }
 
         setContentView(R.layout.activity_main)
 
@@ -113,6 +123,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
     override fun onResume() {
         super.onResume()
+        if (error) return
 
         loadBooks()
         loadCalendars()
@@ -170,6 +181,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     }
 
     override fun onMenuItemClick(item: MenuItem): Boolean {
+        if (error) return false
         when (item.itemId) {
             R.id.create_address_book -> {
                 var permissions = emptyArray<String>()
