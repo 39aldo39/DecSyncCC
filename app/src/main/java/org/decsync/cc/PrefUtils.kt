@@ -20,7 +20,7 @@ package org.decsync.cc
 
 import android.content.Context
 import android.preference.PreferenceManager
-import org.decsync.library.getDefaultDecsyncBaseDir
+import org.decsync.library.getDefaultDecsyncDir
 
 object PrefUtils {
     const val DECSYNC_DIRECTORY = "decsync.directory"
@@ -28,7 +28,7 @@ object PrefUtils {
 
     fun getDecsyncDir(context: Context): String {
         val settings = PreferenceManager.getDefaultSharedPreferences(context)
-        return settings.getString(DECSYNC_DIRECTORY, getDefaultDecsyncBaseDir())!!
+        return settings.getString(DECSYNC_DIRECTORY, getDefaultDecsyncDir())!!
     }
 
     fun putDecsyncDir(context: Context, value: String) {

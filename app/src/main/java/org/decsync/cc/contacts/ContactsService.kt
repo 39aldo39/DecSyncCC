@@ -34,7 +34,7 @@ import android.os.Bundle
 import android.os.IBinder
 import android.provider.ContactsContract
 import android.provider.ContactsContract.RawContacts
-import android.support.v4.content.ContextCompat
+import androidx.core.content.ContextCompat
 import at.bitfire.vcard4android.AndroidAddressBook
 import org.decsync.cc.*
 
@@ -52,6 +52,7 @@ class ContactsService : Service() {
     override fun onBind(intent: Intent): IBinder? = mContactsSyncAdapter?.syncAdapterBinder
 
     internal inner class ContactsSyncAdapter(context: Context, autoInitialize: Boolean) : AbstractThreadedSyncAdapter(context, autoInitialize) {
+        @ExperimentalStdlibApi
         override fun onPerformSync(account: Account, extras: Bundle,
                                    authority: String, provider: ContentProviderClient,
                                    syncResult: SyncResult) {
@@ -72,7 +73,7 @@ class ContactsService : Service() {
             provider.query(syncAdapterUri(account, RawContacts.CONTENT_URI),
                     arrayOf(RawContacts._ID, LocalContact.COLUMN_LOCAL_UID),
                     "${RawContacts.DELETED}=1", null, null
-            ).use { cursor ->
+            )!!.use { cursor ->
                 while (cursor.moveToNext()) {
                     val id = cursor.getString(0)
                     val uid = cursor.getString(1)
@@ -88,7 +89,7 @@ class ContactsService : Service() {
             // Detect dirty contacts
             provider.query(syncAdapterUri(account, RawContacts.CONTENT_URI),
                     arrayOf(RawContacts._ID, LocalContact.COLUMN_LOCAL_UID, RawContacts.SOURCE_ID),
-                    "${RawContacts.DIRTY}=1", null, null).use { cursor ->
+                    "${RawContacts.DIRTY}=1", null, null)!!.use { cursor ->
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(0)
                     val uid = cursor.getString(1)

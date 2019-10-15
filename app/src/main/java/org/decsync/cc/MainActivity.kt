@@ -27,28 +27,34 @@ import android.provider.CalendarContract.Events
 import android.provider.ContactsContract
 import android.provider.ContactsContract.RawContacts
 import android.provider.Settings
-import android.support.v4.app.ActivityCompat
-import android.support.v4.app.NotificationManagerCompat
-import android.support.v4.content.ContextCompat
-import android.support.v7.app.AlertDialog
-import android.support.v7.app.AppCompatActivity
-import android.support.v7.widget.Toolbar
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
 import android.util.Log
 import android.view.*
 import android.widget.*
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonLiteral
+import kotlinx.serialization.json.content
 import org.decsync.cc.calendars.COLUMN_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.calendars.CalendarDecsyncUtils
 import org.decsync.cc.calendars.CalendarDecsyncUtils.addColor
 import org.decsync.cc.contacts.ContactDecsyncUtils
 import org.decsync.cc.contacts.KEY_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.contacts.syncAdapterUri
-import org.decsync.library.*
-import org.json.JSONObject
+import org.decsync.library.Decsync
+import org.decsync.library.DecsyncException
+import org.decsync.library.checkDecsyncInfo
+import org.decsync.library.listDecsyncCollections
 import java.util.Random
 
 const val TAG = "DecSyncCC"
 
+@ExperimentalStdlibApi
 class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupMenu.OnMenuItemClickListener {
 
     private var error = false
@@ -131,13 +137,13 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
     private fun loadBooks() {
         val adapter = AddressBookAdapter(this)
-        val decsyncBaseDir = PrefUtils.getDecsyncDir(this)
+        val decsyncDir = PrefUtils.getDecsyncDir(this)
 
         adapter.clear()
         adapter.addAll(
-                listDecsyncCollections(decsyncBaseDir, "contacts").map {
-                    val dir = getDecsyncSubdir(decsyncBaseDir, "contacts", it)
-                    val name = Decsync.getStoredStaticValue(dir, listOf("info"), "name") as? String ?: it
+                listDecsyncCollections(decsyncDir, "contacts").map {
+                    val info = Decsync.getStaticInfo(decsyncDir, "contacts", it)
+                    val name = info[JsonLiteral("name")]?.content ?: it
                     CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, it, name, this)
                 }
         )
@@ -148,13 +154,13 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
     private fun loadCalendars() {
         val adapter = CalendarAdapter(this)
-        val decsyncBaseDir = PrefUtils.getDecsyncDir(this)
+        val decsyncDir = PrefUtils.getDecsyncDir(this)
 
         adapter.clear()
         adapter.addAll(
-                listDecsyncCollections(decsyncBaseDir, "calendars").map {
-                    val dir = getDecsyncSubdir(decsyncBaseDir, "calendars", it)
-                    val name = Decsync.getStoredStaticValue(dir, listOf("info"), "name") as? String ?: it
+                listDecsyncCollections(decsyncDir, "calendars").map {
+                    val info = Decsync.getStaticInfo(decsyncDir, "calendars", it)
+                    val name = info[JsonLiteral("name")]?.content ?: it
                     CollectionInfo(CollectionInfo.Type.CALENDAR, it, name, this)
                 }
         )
@@ -207,7 +213,8 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             if (!name.isBlank()) {
                                 val id = "colID%05d".format(Random().nextInt(100000))
                                 val info = CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, id, name, this)
-                                Decsync<Unit>(info.dir, ownAppId, emptyList()).setEntry(listOf("info"), "name", name)
+                                val decsync = Decsync<Unit>(info.decsyncDir, info.syncType, info.collection, ownAppId)
+                                decsync.setEntry(listOf("info"), JsonLiteral("name"), JsonLiteral(name))
                                 loadBooks()
                             }
                         }
@@ -238,7 +245,8 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             if (!name.isBlank()) {
                                 val id = "colID%05d".format(Random().nextInt(100000))
                                 val info = CollectionInfo(CollectionInfo.Type.CALENDAR, id, name, this)
-                                Decsync<Unit>(info.dir, ownAppId, emptyList()).setEntry(listOf("info"), "name", name)
+                                val decsync = Decsync<Unit>(info.decsyncDir, info.syncType, info.collection, ownAppId)
+                                decsync.setEntry(listOf("info"), JsonLiteral("name"), JsonLiteral(name))
                                 loadCalendars()
                             }
                         }
@@ -299,7 +307,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                 val extra = Extra(info, this, provider)
                                 setNumProcessedEntries(extra, 0)
                                 decsync.initStoredEntries()
-                                decsync.executeStoredEntries(listOf("resources"), extra)
+                                decsync.executeStoredEntriesForPath(listOf("resources"), extra)
                             } finally {
                                 if (Build.VERSION.SDK_INT >= 24)
                                     provider.close()
@@ -345,7 +353,9 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             values.put(Calendars.CALENDAR_ACCESS_LEVEL, Calendars.CAL_ACCESS_OWNER)
                             values.put(Calendars.NAME, info.id)
                             values.put(Calendars.CALENDAR_DISPLAY_NAME, info.name)
-                            Decsync.getStoredStaticValue(info.dir, listOf("info"), "color")?.let { color ->
+                            val decsyncInfo = Decsync.getStaticInfo(info.decsyncDir, info.syncType, info.collection)
+                            val color = decsyncInfo[JsonLiteral("color")]?.content
+                            if (color != null) {
                                 addColor(values, color)
                             }
                             provider.insert(syncAdapterUri(account, Calendars.CONTENT_URI), values)
@@ -361,7 +371,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                 val extra = Extra(info, this, provider)
                                 setNumProcessedEntries(extra, 0)
                                 decsync.initStoredEntries()
-                                decsync.executeStoredEntries(listOf("resources"), extra)
+                                decsync.executeStoredEntriesForPath(listOf("resources"), extra)
                                 with(NotificationManagerCompat.from(this)) {
                                     cancel(info.notificationId)
                                 }
@@ -426,7 +436,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             .setPositiveButton("OK") { _, _ ->
                                 val name = input.text.toString()
                                 if (!name.isBlank() && name != info.name) {
-                                    setCollectionInfo(info, "name", name)
+                                    setCollectionInfo(info, JsonLiteral("name"), JsonLiteral(name))
                                 }
                             }
                             .setNegativeButton("Cancel") { _, _ -> }
@@ -436,7 +446,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     AlertDialog.Builder(this)
                             .setTitle("Are you sure you want to delete the collection '${info.name}'?")
                             .setPositiveButton("OK") { _, _ ->
-                                setCollectionInfo(info, "deleted", true)
+                                setCollectionInfo(info, JsonLiteral("deleted"), JsonLiteral(true))
                             }
                             .setNegativeButton("Cancel") { _, _ -> }
                             .show()
@@ -451,14 +461,14 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                     processedEntries = AccountManager.get(this).getUserData(info.getAccount(this), KEY_NUM_PROCESSED_ENTRIES)?.toInt()
                                     provider.query(syncAdapterUri(info.getAccount(this), RawContacts.CONTENT_URI),
                                             emptyArray(), "${RawContacts.DELETED}=0",
-                                            null, null).use { cursor ->
+                                            null, null)!!.use { cursor ->
                                         androidEntries = cursor.count
                                     }
                                 }
                                 CollectionInfo.Type.CALENDAR -> {
                                     val calendarId = provider.query(syncAdapterUri(info.getAccount(this), Calendars.CONTENT_URI),
                                             arrayOf(Calendars._ID, COLUMN_NUM_PROCESSED_ENTRIES), "${Calendars.NAME}=?",
-                                            arrayOf(info.id), null).use { calCursor ->
+                                            arrayOf(info.id), null)!!.use { calCursor ->
                                         if (calCursor.moveToFirst()) {
                                             processedEntries = if (calCursor.isNull(1)) null else calCursor.getInt(1)
                                             calCursor.getLong(0)
@@ -468,7 +478,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                     }
                                     provider.query(syncAdapterUri(info.getAccount(this), Events.CONTENT_URI),
                                             emptyArray(), "${Events.CALENDAR_ID}=? AND ${Events.ORIGINAL_ID} IS NULL AND ${Events.DELETED}=0",
-                                            arrayOf(calendarId.toString()), null).use { cursor ->
+                                            arrayOf(calendarId.toString()), null)!!.use { cursor ->
                                         androidEntries = cursor.count
                                     }
                                 }
@@ -494,15 +504,15 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
                             override fun doInBackground(vararg params: Void): Int {
                                 class Extra(var count: Int)
-                                val countListener = object : OnEntryUpdateListener<Extra> {
-                                    override fun matchesPath(path: List<String>): Boolean = true
-                                    override fun onEntriesUpdate(path: List<String>, entries: List<Decsync.Entry>, extra: Extra) {
-                                        extra.count += entries.size
+                                val latestAppId = getDecsync(mInfo).latestAppId()
+                                val countDecsync = Decsync<Extra>(mInfo.decsyncDir, mInfo.syncType, mInfo.collection, latestAppId)
+                                countDecsync.addListener(emptyList()) { _, entry, extra ->
+                                    if (!entry.value.isNull) {
+                                        extra.count++
                                     }
                                 }
-                                val countDecsync = Decsync(mInfo.dir, getDecsync(mInfo).latestAppId(), listOf(countListener))
                                 val extra = Extra(0)
-                                countDecsync.executeStoredEntries(listOf("resources"), extra, valuePred = { it != JSONObject.NULL })
+                                countDecsync.executeStoredEntriesForPath(listOf("resources"), extra)
                                 return extra.count
                             }
 
@@ -533,19 +543,19 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         true
     }
 
-    private fun setCollectionInfo(info: CollectionInfo, key: Any, value: Any) {
+    private fun setCollectionInfo(info: CollectionInfo, key: JsonElement, value: JsonElement) {
         Log.d(TAG, "Set info for ${info.id} of key $key to value $value")
         info.getProviderClient(this)?.let { provider ->
             try {
                 val extra = Extra(info, this, provider)
                 when (info.type) {
                     CollectionInfo.Type.ADDRESS_BOOK -> {
-                        (ContactDecsyncUtils::InfoListener)().onSubfileEntryUpdate(Decsync.Entry(key, value), extra)
+                        ContactDecsyncUtils.infoListener(emptyList(), Decsync.Entry(key, value), extra)
                         getDecsync(info).setEntry(listOf("info"), key, value)
                         loadBooks()
                     }
                     CollectionInfo.Type.CALENDAR -> {
-                        (CalendarDecsyncUtils::InfoListener)().onSubfileEntryUpdate(Decsync.Entry(key, value), extra)
+                        CalendarDecsyncUtils.infoListener(emptyList(), Decsync.Entry(key, value), extra)
                         getDecsync(info).setEntry(listOf("info"), key, value)
                         loadCalendars()
                     }
@@ -566,7 +576,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     class AddressBookAdapter(
             context: Context
     ): ArrayAdapter<CollectionInfo>(context, R.layout.account_address_book_item) {
-        override fun getView(position: Int, v: View?, parent: ViewGroup?): View {
+        override fun getView(position: Int, v: View?, parent: ViewGroup): View {
             val v = v ?: LayoutInflater.from(context).inflate(R.layout.account_address_book_item, parent, false)
             val info = getItem(position)!!
             val isChecked = info.isEnabled(context)
@@ -590,23 +600,25 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     class CalendarAdapter(
             context: Context
     ): ArrayAdapter<CollectionInfo>(context, R.layout.account_calendar_item) {
-        override fun getView(position: Int, v: View?, parent: ViewGroup?): View {
+        override fun getView(position: Int, v: View?, parent: ViewGroup): View {
             val v = v ?: LayoutInflater.from(context).inflate(R.layout.account_calendar_item, parent, false)
             val info = getItem(position)!!
             val isChecked = info.isEnabled(context)
 
-            val checked: CheckBox = v.findViewById(R.id.checked)
+            val checked = v.findViewById<CheckBox>(R.id.checked)
             checked.isChecked = isChecked
 
-            val vColor: View = v.findViewById(R.id.color)
-            vColor.visibility = (Decsync.getStoredStaticValue(info.dir, listOf("info"), "color") as? String)?.let {
+            val vColor = v.findViewById<View>(R.id.color)
+            val decsyncInfo = Decsync.getStaticInfo(info.decsyncDir, info.syncType, info.collection)
+            val color = decsyncInfo[JsonLiteral("color")]?.content
+            vColor.visibility = color?.let {
                 try { Color.parseColor(it) } catch (e: IllegalArgumentException) { null }
             }?.let {
                 vColor.setBackgroundColor(it)
                 View.VISIBLE
             } ?: View.INVISIBLE
 
-            val tv: TextView = v.findViewById(R.id.title)
+            val tv = v.findViewById<TextView>(R.id.title)
             tv.text = info.name
 
             v.findViewById<ImageView>(R.id.action_overflow).setOnClickListener { view ->

@@ -27,16 +27,17 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.CalendarContract
-import android.support.v4.content.ContextCompat
-import android.support.v7.app.AlertDialog
-import android.support.v7.app.AppCompatActivity
-import android.support.v7.preference.PreferenceFragmentCompat
+import androidx.core.content.ContextCompat
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.preference.PreferenceFragmentCompat
 import android.view.MenuItem
+import androidx.preference.Preference
 import com.nononsenseapps.filepicker.FilePickerActivity
 import com.nononsenseapps.filepicker.Utils
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.library.DecsyncException
-import org.decsync.library.checkDecsyncInfo
+//import org.decsync.library.checkDecsyncInfo
 
 const val CHOOSE_DECSYNC_DIRECTORY = 0
 
@@ -68,7 +69,7 @@ class GeneralPrefsActivity : AppCompatActivity() {
 
             setDecsyncDirSummary()
 
-            val preference = findPreference(PrefUtils.DECSYNC_DIRECTORY)
+            val preference = findPreference<Preference>(PrefUtils.DECSYNC_DIRECTORY)!!
             preference.setOnPreferenceClickListener {
                 val context = activity!!
 
@@ -81,7 +82,7 @@ class GeneralPrefsActivity : AppCompatActivity() {
                     context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
                         anyCalendarEnabled = try {
                             provider.query(syncAdapterUri(calendarsAccount, CalendarContract.Calendars.CONTENT_URI), emptyArray(),
-                                    null, null, null).use { cursor ->
+                                    null, null, null)!!.use { cursor ->
                                 cursor.moveToFirst()
                             }
                         } finally {
@@ -114,7 +115,7 @@ class GeneralPrefsActivity : AppCompatActivity() {
         }
 
         private fun setDecsyncDirSummary() {
-            val preference = findPreference(PrefUtils.DECSYNC_DIRECTORY)
+            val preference = findPreference<Preference>(PrefUtils.DECSYNC_DIRECTORY)!!
             val dir = PrefUtils.getDecsyncDir(activity!!)
             preference.summary = dir
         }
@@ -130,7 +131,7 @@ class GeneralPrefsActivity : AppCompatActivity() {
                     val newDir = Utils.getFileForUri(uri).path
                     if (oldDir != newDir) {
                         try {
-                            checkDecsyncInfo(PrefUtils.getDecsyncDir(context))
+                            //checkDecsyncInfo(newDir)
                             PrefUtils.putDecsyncDir(context, newDir)
                             setDecsyncDirSummary()
                         } catch (e: DecsyncException) {

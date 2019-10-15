@@ -25,6 +25,8 @@ import at.bitfire.ical4android.AndroidCalendar
 import at.bitfire.ical4android.AndroidEvent
 import at.bitfire.ical4android.AndroidEventFactory
 import at.bitfire.ical4android.Event
+import kotlinx.serialization.json.JsonLiteral
+import kotlinx.serialization.json.JsonNull
 import org.decsync.cc.Extra
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.library.Decsync
@@ -32,6 +34,7 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.util.*
 
+@ExperimentalStdlibApi
 class LocalEvent: AndroidEvent {
     constructor(calendar: AndroidCalendar<*>, event: Event) : super(calendar, event)
     constructor(calendar: AndroidCalendar<*>, values: ContentValues) : super(calendar, values)
@@ -41,7 +44,7 @@ class LocalEvent: AndroidEvent {
         val uid = event.uid
 
         if (uid != null) {
-            decsync.setEntry(listOf("resources", uid), JSONObject.NULL, JSONObject.NULL)
+            decsync.setEntry(listOf("resources", uid), JsonNull, JsonNull)
         }
 
         super.delete()
@@ -63,7 +66,7 @@ class LocalEvent: AndroidEvent {
         val os = ByteArrayOutputStream()
         event.write(os)
         val ical = os.toString("UTF-8")
-        decsync.setEntry(listOf("resources", uid), JSONObject.NULL, ical)
+        decsync.setEntry(listOf("resources", uid), JsonNull, JsonLiteral(ical))
     }
 
     override fun populateEvent(row: ContentValues) {

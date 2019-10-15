@@ -21,7 +21,6 @@ package org.decsync.cc
 import android.Manifest
 import android.accounts.Account
 import android.accounts.AccountManager
-import android.content.ContentProvider
 import android.content.ContentProviderClient
 import android.content.Context
 import android.content.pm.PackageManager
@@ -29,9 +28,8 @@ import android.os.Build
 import android.provider.CalendarContract
 import android.provider.CalendarContract.Calendars
 import android.provider.ContactsContract
-import android.support.v4.content.ContextCompat
+import androidx.core.content.ContextCompat
 import org.decsync.cc.contacts.syncAdapterUri
-import org.decsync.library.getDecsyncSubdir
 
 class CollectionInfo (
         val type: Type,
@@ -39,7 +37,9 @@ class CollectionInfo (
         val name: String,
         context: Context
 ) {
-    val dir = getDecsyncSubdir(PrefUtils.getDecsyncDir(context), type.toString(), id)
+    val decsyncDir = PrefUtils.getDecsyncDir(context)
+    val syncType = type.toString()
+    val collection = id
     val notificationId = 2 * id.hashCode() + type.ordinal
 
     enum class Type {
@@ -48,8 +48,8 @@ class CollectionInfo (
 
         override fun toString(): String =
             when (this) {
-                Type.ADDRESS_BOOK -> "contacts"
-                Type.CALENDAR -> "calendars"
+                ADDRESS_BOOK -> "contacts"
+                CALENDAR -> "calendars"
             }
     }
 
@@ -68,8 +68,8 @@ class CollectionInfo (
     fun getProviderClient(context: Context): ContentProviderClient? =
         context.contentResolver.acquireContentProviderClient(
                 when (type) {
-                    CollectionInfo.Type.ADDRESS_BOOK -> ContactsContract.AUTHORITY
-                    CollectionInfo.Type.CALENDAR -> CalendarContract.AUTHORITY
+                    Type.ADDRESS_BOOK -> ContactsContract.AUTHORITY
+                    Type.CALENDAR -> CalendarContract.AUTHORITY
                 }
         )
 
@@ -85,7 +85,7 @@ class CollectionInfo (
                     context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
                         try {
                             provider.query(syncAdapterUri(account, Calendars.CONTENT_URI), emptyArray(),
-                                    "${Calendars.NAME}=?", arrayOf(id), null).use { cursor ->
+                                    "${Calendars.NAME}=?", arrayOf(id), null)?.use { cursor ->
                                 if (cursor.moveToFirst()) {
                                     result = true
                                 }

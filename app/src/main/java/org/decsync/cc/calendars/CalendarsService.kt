@@ -27,8 +27,9 @@ import android.os.Bundle
 import android.os.IBinder
 import android.provider.CalendarContract.Calendars
 import android.provider.CalendarContract.Events
-import android.support.v4.content.ContextCompat
+import androidx.core.content.ContextCompat
 import at.bitfire.ical4android.AndroidCalendar
+import kotlinx.serialization.json.JsonLiteral
 import org.decsync.cc.CollectionInfo
 import org.decsync.cc.Extra
 import org.decsync.cc.addToNumProcessedEntries
@@ -50,6 +51,7 @@ class CalendarsService : Service() {
     override fun onBind(intent: Intent): IBinder? = mCalendarsSyncAdapter?.syncAdapterBinder
 
     internal inner class CalendarsSyncAdapter(context: Context, autoInitialize: Boolean) : AbstractThreadedSyncAdapter(context, autoInitialize) {
+        @ExperimentalStdlibApi
         override fun onPerformSync(account: Account, extras: Bundle,
                                    authority: String, provider: ContentProviderClient,
                                    syncResult: SyncResult) {
@@ -65,7 +67,7 @@ class CalendarsService : Service() {
 
             provider.query(syncAdapterUri(account, Calendars.CONTENT_URI),
                     arrayOf(Calendars._ID, Calendars.NAME, Calendars.CALENDAR_DISPLAY_NAME, Calendars.CALENDAR_COLOR, COLUMN_OLD_COLOR),
-                    null, null, null).use { calCursor ->
+                    null, null, null)!!.use { calCursor ->
                 while (calCursor.moveToNext()) {
                     val calendarId = calCursor.getLong(0)
                     val decsyncId = calCursor.getString(1)
@@ -80,7 +82,7 @@ class CalendarsService : Service() {
 
                     // Detect changed color
                     if (color != oldColor) {
-                        decsync.setEntry(listOf("info"), "color", String.format("#%06X", color and 0xFFFFFF))
+                        decsync.setEntry(listOf("info"), JsonLiteral("color"), JsonLiteral(String.format("#%06X", color and 0xFFFFFF)))
 
                         val values = ContentValues()
                         values.put(COLUMN_OLD_COLOR, color)
@@ -91,7 +93,7 @@ class CalendarsService : Service() {
                     // Detect deleted events
                     provider.query(syncAdapterUri(account, Events.CONTENT_URI), arrayOf(Events._ID),
                             "${Events.CALENDAR_ID}=? AND ${Events.DELETED}=1",
-                            arrayOf(calendarId.toString()), null).use { cursor ->
+                            arrayOf(calendarId.toString()), null)!!.use { cursor ->
                         while (cursor.moveToNext()) {
                             val id = cursor.getLong(0)
 
@@ -106,7 +108,7 @@ class CalendarsService : Service() {
                     provider.query(syncAdapterUri(account, Events.CONTENT_URI),
                             arrayOf(Events._ID, Events.ORIGINAL_ID, Events._SYNC_ID),
                             "${Events.CALENDAR_ID}=? AND ${Events.DIRTY}=1",
-                            arrayOf(calendarId.toString()), null).use { cursor ->
+                            arrayOf(calendarId.toString()), null)!!.use { cursor ->
                         while (cursor.moveToNext()) {
                             val id = cursor.getString(1) ?: cursor.getString(0)
                             val newEvent = cursor.isNull(1) && cursor.isNull(2)

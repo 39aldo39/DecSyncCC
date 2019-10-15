@@ -22,12 +22,15 @@ import android.content.ContentValues
 import android.provider.ContactsContract.RawContacts
 import at.bitfire.vcard4android.*
 import ezvcard.VCardVersion
+import kotlinx.serialization.json.JsonLiteral
+import kotlinx.serialization.json.JsonNull
 import org.decsync.cc.Extra
 import org.decsync.library.Decsync
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.util.*
 
+@ExperimentalStdlibApi
 class LocalContact: AndroidContact {
 
     // Use fileName as UID and eTag as bookId
@@ -52,7 +55,7 @@ class LocalContact: AndroidContact {
         val uid = uid
 
         if (uid != null) {
-            decsync.setEntry(listOf("resources", uid), JSONObject.NULL, JSONObject.NULL)
+            decsync.setEntry(listOf("resources", uid), JsonNull, JsonNull)
         }
 
         super.delete()
@@ -72,7 +75,7 @@ class LocalContact: AndroidContact {
         val os = ByteArrayOutputStream()
         contact.write(VCardVersion.V4_0, GroupMethod.CATEGORIES, os)
         val vcard = os.toString("UTF-8")
-        decsync.setEntry(listOf("resources", uid), JSONObject.NULL, vcard)
+        decsync.setEntry(listOf("resources", uid), JsonNull, JsonLiteral(vcard))
     }
 
     object ContactFactory: AndroidContactFactory<LocalContact> {

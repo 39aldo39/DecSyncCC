@@ -4,6 +4,3 @@
 [submodule "ical4android"]
 	path = ical4android
 	url = https://gitlab.com/bitfireAT/ical4android.git
-[submodule "libdecsync"]
-	path = libdecsync
-	url = https://github.com/39aldo39/libdecsync-android

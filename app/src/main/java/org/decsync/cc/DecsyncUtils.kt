@@ -33,18 +33,20 @@ import org.decsync.library.getAppId
 
 val ownAppId = getAppId("DecSyncCC")
 
+@ExperimentalStdlibApi
 fun getDecsync(info: CollectionInfo): Decsync<Extra> {
-    val listeners = when (info.type) {
-        CollectionInfo.Type.ADDRESS_BOOK -> listOf(
-                (ContactDecsyncUtils::InfoListener)(),
-                (ContactDecsyncUtils::ResourcesListener)()
-        )
-        CollectionInfo.Type.CALENDAR -> listOf(
-                (CalendarDecsyncUtils::InfoListener)(),
-                (CalendarDecsyncUtils::ResourcesListener)()
-        )
+    val decsync = Decsync<Extra>(info.decsyncDir, info.syncType, info.collection, ownAppId)
+    val infoListener = when (info.type) {
+        CollectionInfo.Type.ADDRESS_BOOK -> ContactDecsyncUtils::infoListener
+        CollectionInfo.Type.CALENDAR -> CalendarDecsyncUtils::infoListener
     }
-    return Decsync(info.dir, ownAppId, listeners)
+    decsync.addListener(listOf("info"), infoListener)
+    val resourcesListener = when (info.type) {
+        CollectionInfo.Type.ADDRESS_BOOK -> ContactDecsyncUtils::resourcesListener
+        CollectionInfo.Type.CALENDAR -> CalendarDecsyncUtils::resourcesListener
+    }
+    decsync.addListener(listOf("resources"), resourcesListener)
+    return decsync
 }
 
 class Extra(
@@ -71,7 +73,7 @@ private fun addToNumProcessedEntriesCalendar(extra: Extra, add: Int) {
     val account = extra.info.getAccount(extra.context)
     val count = extra.provider.query(syncAdapterUri(account, CalendarContract.Calendars.CONTENT_URI),
             arrayOf(COLUMN_NUM_PROCESSED_ENTRIES), "${CalendarContract.Calendars.NAME}=?",
-            arrayOf(extra.info.id), null).use { cursor ->
+            arrayOf(extra.info.id), null)!!.use { cursor ->
         if (cursor.moveToFirst() && !cursor.isNull(0)) cursor.getInt(0) else null
     } ?: return
     val values = ContentValues()
