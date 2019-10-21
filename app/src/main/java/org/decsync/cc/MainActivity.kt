@@ -62,17 +62,6 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        try {
-            checkDecsyncInfo(PrefUtils.getDecsyncDir(this))
-        } catch (e: DecsyncException) {
-            error = true
-            AlertDialog.Builder(this)
-                .setTitle("DecSync")
-                .setMessage(e.message)
-                .setPositiveButton("OK") { _, _ -> }
-                .show()
-        }
-
         setContentView(R.layout.activity_main)
 
         // Address books toolbar
@@ -129,7 +118,18 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
     override fun onResume() {
         super.onResume()
-        if (error) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) return
+        try {
+            checkDecsyncInfo(PrefUtils.getDecsyncDir(this))
+        } catch (e: DecsyncException) {
+            error = true
+            AlertDialog.Builder(this)
+                    .setTitle("DecSync")
+                    .setMessage(e.message)
+                    .setPositiveButton("OK") { _, _ -> }
+                    .show()
+            return
+        }
 
         loadBooks()
         loadCalendars()
