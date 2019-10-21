@@ -37,7 +37,7 @@ import com.nononsenseapps.filepicker.FilePickerActivity
 import com.nononsenseapps.filepicker.Utils
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.library.DecsyncException
-//import org.decsync.library.checkDecsyncInfo
+import org.decsync.library.checkDecsyncInfo
 
 const val CHOOSE_DECSYNC_DIRECTORY = 0
 
@@ -120,6 +120,7 @@ class GeneralPrefsActivity : AppCompatActivity() {
             preference.summary = dir
         }
 
+        @ExperimentalStdlibApi
         override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
             super.onActivityResult(requestCode, resultCode, data)
 
@@ -131,7 +132,7 @@ class GeneralPrefsActivity : AppCompatActivity() {
                     val newDir = Utils.getFileForUri(uri).path
                     if (oldDir != newDir) {
                         try {
-                            //checkDecsyncInfo(newDir)
+                            checkDecsyncInfo(newDir)
                             PrefUtils.putDecsyncDir(context, newDir)
                             setDecsyncDirSummary()
                         } catch (e: DecsyncException) {
