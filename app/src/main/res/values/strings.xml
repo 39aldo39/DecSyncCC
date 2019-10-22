@@ -41,6 +41,7 @@
     <string name="settings_about">About DecSync CC</string>
     <string name="settings_category_decsync">DecSync</string>
     <string name="settings_decsync_directory">DecSync directory</string>
+    <string name="settings_decsync_directory_reset">Reset DecSync directory</string>
 
     <!-- Notification channel -->
     <string name="channel_init_sync_name">Initial sync</string>

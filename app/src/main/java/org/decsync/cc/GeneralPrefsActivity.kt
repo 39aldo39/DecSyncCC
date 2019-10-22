@@ -38,6 +38,7 @@ import com.nononsenseapps.filepicker.Utils
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.library.DecsyncException
 import org.decsync.library.checkDecsyncInfo
+import org.decsync.library.getDefaultDecsyncDir
 
 const val CHOOSE_DECSYNC_DIRECTORY = 0
 
@@ -58,6 +59,7 @@ class GeneralPrefsActivity : AppCompatActivity() {
                 false
             }
 
+    @ExperimentalStdlibApi
     class GeneralPrefsFragment : PreferenceFragmentCompat() {
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
@@ -67,43 +69,17 @@ class GeneralPrefsActivity : AppCompatActivity() {
         override fun onResume() {
             super.onResume()
 
-            setDecsyncDirSummary()
+            initDecsyncDir()
+            initDecsyncDirReset()
+        }
+
+        private fun initDecsyncDir() {
+            val context = activity!!
 
             val preference = findPreference<Preference>(PrefUtils.DECSYNC_DIRECTORY)!!
+            preference.summary = PrefUtils.getDecsyncDir(context)
             preference.setOnPreferenceClickListener {
-                val context = activity!!
-
-                val addressBookAccounts = AccountManager.get(context).getAccountsByType(getString(R.string.account_type_contacts))
-                val anyAddressBookEnabled = addressBookAccounts.isNotEmpty()
-
-                var anyCalendarEnabled = false
-                val calendarsAccount = Account(getString(R.string.account_name_calendars), getString(R.string.account_type_calendars))
-                if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED) {
-                    context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
-                        anyCalendarEnabled = try {
-                            provider.query(syncAdapterUri(calendarsAccount, CalendarContract.Calendars.CONTENT_URI), emptyArray(),
-                                    null, null, null)!!.use { cursor ->
-                                cursor.moveToFirst()
-                            }
-                        } finally {
-                            if (Build.VERSION.SDK_INT >= 24)
-                                provider.close()
-                            else
-                                @Suppress("DEPRECATION")
-                                provider.release()
-                        }
-                    }
-                }
-
-                if (anyAddressBookEnabled || anyCalendarEnabled) {
-                    AlertDialog.Builder(context)
-                            .setTitle("Enabled collections")
-                            .setMessage("There are still some collections enabled. Disable all collections before changing the DecSync directory.")
-                            .setNeutralButton("OK") { dialog, _ ->
-                                dialog.dismiss()
-                            }
-                            .show()
-                } else {
+                if (!checkCollectionEnabled()) {
                     val intent = Intent(context, FilePickerActivity::class.java)
                     intent.putExtra(FilePickerActivity.EXTRA_ALLOW_CREATE_DIR, true)
                     intent.putExtra(FilePickerActivity.EXTRA_MODE, FilePickerActivity.MODE_DIR)
@@ -114,13 +90,77 @@ class GeneralPrefsActivity : AppCompatActivity() {
             }
         }
 
-        private fun setDecsyncDirSummary() {
-            val preference = findPreference<Preference>(PrefUtils.DECSYNC_DIRECTORY)!!
-            val dir = PrefUtils.getDecsyncDir(activity!!)
-            preference.summary = dir
+        private fun initDecsyncDirReset() {
+            val context = activity!!
+
+            val preference = findPreference<Preference>(PrefUtils.DECSYNC_DIRECTORY_RESET)!!
+            preference.setOnPreferenceClickListener {
+                if (!checkCollectionEnabled()) {
+                    AlertDialog.Builder(context)
+                            .setTitle("Reset DecSync directory")
+                            .setMessage("Do you want to reset the DecSync directory to the default location '${getDefaultDecsyncDir()}'?")
+                            .setNegativeButton("No") { _, _ -> }
+                            .setPositiveButton("Yes") { _, _ ->
+                                setDecsyncDir(getDefaultDecsyncDir())
+                            }
+                            .show()
+                }
+                true
+            }
         }
 
-        @ExperimentalStdlibApi
+        private fun checkCollectionEnabled(): Boolean {
+            val context = activity!!
+
+            val addressBookAccounts = AccountManager.get(context).getAccountsByType(getString(R.string.account_type_contacts))
+            val anyAddressBookEnabled = addressBookAccounts.isNotEmpty()
+
+            var anyCalendarEnabled = false
+            val calendarsAccount = Account(getString(R.string.account_name_calendars), getString(R.string.account_type_calendars))
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED) {
+                context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
+                    anyCalendarEnabled = try {
+                        provider.query(syncAdapterUri(calendarsAccount, CalendarContract.Calendars.CONTENT_URI), emptyArray(),
+                                null, null, null)!!.use { cursor ->
+                            cursor.moveToFirst()
+                        }
+                    } finally {
+                        if (Build.VERSION.SDK_INT >= 24)
+                            provider.close()
+                        else
+                            @Suppress("DEPRECATION")
+                            provider.release()
+                    }
+                }
+            }
+
+            return if (anyAddressBookEnabled || anyCalendarEnabled) {
+                AlertDialog.Builder(context)
+                        .setTitle("Enabled collections")
+                        .setMessage("There are still some collections enabled. Disable all collections before changing the DecSync directory.")
+                        .setNeutralButton("OK") { _, _ -> }
+                        .show()
+                true
+            } else {
+                false
+            }
+        }
+
+        private fun setDecsyncDir(dir: String) {
+            val context = activity!!
+            try {
+                checkDecsyncInfo(dir)
+                PrefUtils.putDecsyncDir(context, dir)
+                findPreference<Preference>(PrefUtils.DECSYNC_DIRECTORY)!!.summary = dir
+            } catch (e: DecsyncException) {
+                AlertDialog.Builder(context)
+                        .setTitle("DecSync")
+                        .setMessage(e.message)
+                        .setPositiveButton("OK") { _, _ -> }
+                        .show()
+            }
+        }
+
         override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
             super.onActivityResult(requestCode, resultCode, data)
 
@@ -131,17 +171,7 @@ class GeneralPrefsActivity : AppCompatActivity() {
                     val oldDir = PrefUtils.getDecsyncDir(context)
                     val newDir = Utils.getFileForUri(uri).path
                     if (oldDir != newDir) {
-                        try {
-                            checkDecsyncInfo(newDir)
-                            PrefUtils.putDecsyncDir(context, newDir)
-                            setDecsyncDirSummary()
-                        } catch (e: DecsyncException) {
-                            AlertDialog.Builder(context)
-                                    .setTitle("DecSync")
-                                    .setMessage(e.message)
-                                    .setPositiveButton("OK") { _, _ -> }
-                                    .show()
-                        }
+                        setDecsyncDir(newDir)
                     }
                 }
             }

@@ -24,6 +24,7 @@ import org.decsync.library.getDefaultDecsyncDir
 
 object PrefUtils {
     const val DECSYNC_DIRECTORY = "decsync.directory"
+    const val DECSYNC_DIRECTORY_RESET = "decsync.directory_reset"
     const val HINT_BATTERY_OPTIMIZATIONS = "hint.battery_optimizations"
 
     fun getDecsyncDir(context: Context): String {
