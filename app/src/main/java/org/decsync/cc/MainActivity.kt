@@ -39,6 +39,7 @@ import android.widget.*
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonLiteral
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.content
 import org.decsync.cc.calendars.COLUMN_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.calendars.CalendarDecsyncUtils
@@ -141,10 +142,15 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
         adapter.clear()
         adapter.addAll(
-                listDecsyncCollections(decsyncDir, "contacts").map {
+                listDecsyncCollections(decsyncDir, "contacts").mapNotNull {
                     val info = Decsync.getStaticInfo(decsyncDir, "contacts", it)
-                    val name = info[JsonLiteral("name")]?.content ?: it
-                    CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, it, name, this)
+                    val deleted = info[JsonLiteral("deleted")]?.boolean ?: false
+                    if (!deleted) {
+                        val name = info[JsonLiteral("name")]?.content ?: it
+                        CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, it, name, this)
+                    } else {
+                        null
+                    }
                 }
         )
 
@@ -158,10 +164,15 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
         adapter.clear()
         adapter.addAll(
-                listDecsyncCollections(decsyncDir, "calendars").map {
+                listDecsyncCollections(decsyncDir, "calendars").mapNotNull {
                     val info = Decsync.getStaticInfo(decsyncDir, "calendars", it)
-                    val name = info[JsonLiteral("name")]?.content ?: it
-                    CollectionInfo(CollectionInfo.Type.CALENDAR, it, name, this)
+                    val deleted = info[JsonLiteral("deleted")]?.boolean ?: false
+                    if (!deleted) {
+                        val name = info[JsonLiteral("name")]?.content ?: it
+                        CollectionInfo(CollectionInfo.Type.CALENDAR, it, name, this)
+                    } else {
+                        null
+                    }
                 }
         )
 
