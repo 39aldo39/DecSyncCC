@@ -53,7 +53,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-runtime:0.13.0'
     implementation 'com.nononsenseapps:filepicker:4.1.0'
-    implementation 'org.decsync:libdecsync:1.1.1'
+    implementation 'org.decsync:libdecsync:1.1.2'
 
     implementation project(":vcard4android")
     implementation project(":ical4android")
