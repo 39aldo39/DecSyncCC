@@ -65,6 +65,9 @@ class CalendarsService : Service() {
             // Required for ical4android
             Thread.currentThread().contextClassLoader = context.classLoader
 
+            // Allow custom event colors
+            AndroidCalendar.insertColors(provider, account)
+
             provider.query(syncAdapterUri(account, Calendars.CONTENT_URI),
                     arrayOf(Calendars._ID, Calendars.NAME, Calendars.CALENDAR_DISPLAY_NAME, Calendars.CALENDAR_COLOR, COLUMN_OLD_COLOR),
                     null, null, null)!!.use { calCursor ->
