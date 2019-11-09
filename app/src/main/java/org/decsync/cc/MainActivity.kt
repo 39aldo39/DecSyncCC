@@ -36,6 +36,7 @@ import androidx.appcompat.widget.Toolbar
 import android.util.Log
 import android.view.*
 import android.widget.*
+import at.bitfire.ical4android.AndroidCalendar
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonLiteral
@@ -378,6 +379,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                 with(NotificationManagerCompat.from(this)) {
                                     notify(info.notificationId, builder.build())
                                 }
+                                AndroidCalendar.insertColors(provider, account) // Allow custom event colors
                                 val decsync = getDecsync(info)
                                 val extra = Extra(info, this, provider)
                                 setNumProcessedEntries(extra, 0)
