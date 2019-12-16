@@ -128,7 +128,7 @@ object CalendarDecsyncUtils {
             }
             else -> {
                 val events = try {
-                    Event.fromReader(StringReader(ical))
+                    Event.eventsFromReader(StringReader(ical))
                 } catch (e: Exception) {
                     Log.w(TAG, "Could not parse iCalendar $ical", e)
                     return
