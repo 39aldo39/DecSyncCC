@@ -30,6 +30,7 @@ import android.provider.CalendarContract.Calendars
 import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
 import org.decsync.cc.contacts.syncAdapterUri
+import org.decsync.library.DecsyncPrefUtils
 
 class CollectionInfo (
         val type: Type,
@@ -37,7 +38,8 @@ class CollectionInfo (
         val name: String,
         context: Context
 ) {
-    val decsyncDir = PrefUtils.getDecsyncDir(context)
+    val decsyncDir = DecsyncPrefUtils.getDecsyncDir(context) ?: throw Exception("No DecSync dir configured")
+    val cr = context.contentResolver
     val syncType = type.toString()
     val collection = id
     val notificationId = 2 * id.hashCode() + type.ordinal
@@ -65,13 +67,18 @@ class CollectionInfo (
         return Account(accountName, accountType)
     }
 
-    fun getProviderClient(context: Context): ContentProviderClient? =
-        context.contentResolver.acquireContentProviderClient(
-                when (type) {
-                    Type.ADDRESS_BOOK -> ContactsContract.AUTHORITY
-                    Type.CALENDAR -> CalendarContract.AUTHORITY
-                }
-        )
+    fun getProviderClient(context: Context): ContentProviderClient? {
+        return try {
+            context.contentResolver.acquireContentProviderClient(
+                    when (type) {
+                        Type.ADDRESS_BOOK -> ContactsContract.AUTHORITY
+                        Type.CALENDAR -> CalendarContract.AUTHORITY
+                    }
+            )
+        } catch (e: SecurityException) {
+            null
+        }
+    }
 
     fun isEnabled(context: Context): Boolean {
         val account = getAccount(context)
