@@ -37,6 +37,7 @@ import android.util.Log
 import android.view.*
 import android.widget.*
 import at.bitfire.ical4android.AndroidCalendar
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonLiteral
@@ -188,6 +189,26 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
+            R.id.sync_now -> {
+                val extras = Bundle()
+                extras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true) // Manual sync
+                extras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true) // Run immediately (don't queue)
+
+                val calendarsAuthority = CalendarContract.AUTHORITY
+                val calendarsAccount = Account(getString(R.string.account_name_calendars), getString(R.string.account_type_calendars))
+                ContentResolver.requestSync(calendarsAccount, calendarsAuthority, extras)
+
+                val contactsAuthority = ContactsContract.AUTHORITY
+                val count = address_books.adapter.count
+                for (position in 0 until count) {
+                    val info = address_books.adapter.getItem(position) as CollectionInfo
+                    if (!info.isEnabled(this)) continue
+                    val account = info.getAccount(this)
+                    ContentResolver.requestSync(account, contactsAuthority, extras)
+                }
+
+                Snackbar.make(findViewById(R.id.parent), R.string.account_synchronizing_now, Snackbar.LENGTH_LONG).show()
+            }
             R.id.settings -> {
                 val intent = Intent(this, GeneralPrefsActivity::class.java)
                 startActivity(intent)

@@ -8,4 +8,6 @@
     <color name="secondaryColor">#e040fb</color>
     <color name="primaryTextColor">#000000</color>
     <color name="secondaryTextColor">@color/grey500</color>
+
+    <color name="actionBarButton">#8a000000</color>
 </resources>

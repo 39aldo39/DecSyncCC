@@ -19,6 +19,8 @@
     <!-- MainActivity -->
     <string name="account_contacts">Address books</string>
     <string name="account_calendars">Calendars</string>
+    <string name="account_synchronize_now">Synchronize now</string>
+    <string name="account_synchronizing_now">Synchronizing now</string>
     <string name="account_synchronize_this_collection">synchronize this collection</string>
     <string name="account_refresh_address_book_list">Refresh address book list</string>
     <string name="account_create_new_address_book">Create new address book</string>
