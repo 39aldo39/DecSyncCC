@@ -52,7 +52,7 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'org.jetbrains.kotlinx:kotlinx-serialization-runtime:0.14.0'
-    implementation 'org.decsync:libdecsync:1.2.0'
+    implementation 'org.decsync:libdecsync-android:1.2.0'
     implementation 'com.github.AppIntro:AppIntro:5.1.0'
 
     implementation project(":vcard4android")
