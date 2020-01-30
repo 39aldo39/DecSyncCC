@@ -19,28 +19,23 @@
 package org.decsync.cc
 
 import android.content.Context
-import androidx.preference.PreferenceManager
+import android.preference.PreferenceManager
+import org.decsync.library.getDefaultDecsyncDir
 
 object PrefUtils {
-    const val OLD_DECSYNC_DIR = "decsync.directory"
-    const val INTRO_DONE = "intro.done"
+    const val DECSYNC_DIRECTORY = "decsync.directory"
+    const val DECSYNC_DIRECTORY_RESET = "decsync.directory_reset"
     const val HINT_BATTERY_OPTIMIZATIONS = "hint.battery_optimizations"
 
-    fun getIntroDone(context: Context): Boolean {
+    fun getDecsyncDir(context: Context): String {
         val settings = PreferenceManager.getDefaultSharedPreferences(context)
-        return settings.getBoolean(INTRO_DONE, false)
+        return settings.getString(DECSYNC_DIRECTORY, getDefaultDecsyncDir())!!
     }
 
-    fun putIntroDone(context: Context, value: Boolean) {
+    fun putDecsyncDir(context: Context, value: String) {
         val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
-        editor.putBoolean(INTRO_DONE, value)
-        editor.remove(OLD_DECSYNC_DIR)
+        editor.putString(DECSYNC_DIRECTORY, value)
         editor.apply()
-    }
-
-    fun hasOldDecsyncDir(context: Context): Boolean {
-        val settings = PreferenceManager.getDefaultSharedPreferences(context)
-        return settings.contains(OLD_DECSYNC_DIR)
     }
 
     fun getHintBatteryOptimizations(context: Context): Boolean {

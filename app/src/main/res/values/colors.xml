@@ -10,8 +10,4 @@
     <color name="secondaryTextColor">@color/grey500</color>
 
     <color name="actionBarButton">#8a000000</color>
-
-    <color name="bg_intro_welcome">#3F51B5</color>
-    <color name="bg_intro_directory">#009688</color>
-    <color name="img_intro_directory">#404040</color>
 </resources>

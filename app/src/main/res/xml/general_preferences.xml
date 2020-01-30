@@ -19,8 +19,14 @@
         <Preference
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:key="libdecsync.directory"
+            android:key="decsync.directory"
             android:title="@string/settings_decsync_directory"/>
+
+        <Preference
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:key="decsync.directory_reset"
+            android:title="@string/settings_decsync_directory_reset"/>
 
     </PreferenceCategory>
 

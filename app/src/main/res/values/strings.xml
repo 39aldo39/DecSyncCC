@@ -10,7 +10,6 @@
     <string name="app_name">DecSync CC</string>
     <string name="title_activity_main">DecSync CC</string>
     <string name="title_activity_settings">Settings</string>
-    <string name="title_activity_intro">Introduction</string>
 
     <string name="account_name_contacts">DecSync Contacts</string>
     <string name="account_name_calendars">DecSync Calendars</string>
@@ -19,11 +18,9 @@
 
     <!-- MainActivity -->
     <string name="account_contacts">Address books</string>
-    <string name="account_contacts_unknown">Address books (unknown)</string>
     <string name="account_calendars">Calendars</string>
     <string name="account_synchronize_now">Synchronize now</string>
     <string name="account_synchronizing_now">Synchronizing now</string>
-    <string name="account_calendars_unknown">Calendars (unknown)</string>
     <string name="account_synchronize_this_collection">synchronize this collection</string>
     <string name="account_refresh_address_book_list">Refresh address book list</string>
     <string name="account_create_new_address_book">Create new address book</string>
@@ -35,13 +32,6 @@
     <string name="entries_count">Entries count</string>
     <string name="account_settings">Settings</string>
 
-    <!-- IntroActivity -->
-    <string name="intro_welcome_title">Welcome to DecSync CC</string>
-    <string name="intro_welcome_desc">DecSync CC synchronizes contacts and calendars using DecSync</string>
-    <string name="intro_directory_title">DecSync Directory</string>
-    <string name="intro_directory_desc">To start synchronizing, all you have to do is synchronize the DecSync directory</string>
-    <string name="intro_directory_button">Choose directory</string>
-
     <!-- startup dialogs -->
     <string name="startup_battery_optimization">Scheduled synchronization</string>
     <string name="startup_battery_optimization_message">Your device will restrain DecSync CC synchronization. To enforce regular DecSync CC sync intervals, turn off \"battery optimization\".</string>
@@ -52,11 +42,10 @@
     <!-- GeneralPrefsActivity -->
     <string name="settings_about">About DecSync CC</string>
     <string name="settings_category_decsync">DecSync</string>
-    <string name="settings_decsync_directory">Select DecSync directory</string>
+    <string name="settings_decsync_directory">DecSync directory</string>
+    <string name="settings_decsync_directory_reset">Reset DecSync directory</string>
 
     <!-- Notification channel -->
     <string name="channel_init_sync_name">Initial sync</string>
     <string name="channel_init_sync_description">Notification shown during the initial sync</string>
-    <string name="channel_error_name">Errors</string>
-    <string name="channel_error_description">Notification shown during an error</string>
 </resources>

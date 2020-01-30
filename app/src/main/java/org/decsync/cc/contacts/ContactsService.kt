@@ -21,7 +21,6 @@ package org.decsync.cc.contacts
 import android.Manifest
 import android.accounts.Account
 import android.accounts.AccountManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.AbstractThreadedSyncAdapter
 import android.content.ContentProviderClient
@@ -35,7 +34,6 @@ import android.os.Bundle
 import android.os.IBinder
 import android.provider.ContactsContract
 import android.provider.ContactsContract.RawContacts
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import at.bitfire.vcard4android.AndroidAddressBook
 import org.decsync.cc.*
@@ -58,76 +56,57 @@ class ContactsService : Service() {
         override fun onPerformSync(account: Account, extras: Bundle,
                                    authority: String, provider: ContentProviderClient,
                                    syncResult: SyncResult) {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED ||
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED ||
                     ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
                 syncResult.databaseError = true
                 return
             }
 
-            try {
-                val bookId = AccountManager.get(context).getUserData(account, "id")
-                val info = CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, bookId, account.name, context)
-                val extra = Extra(info, context, provider)
-                val decsync = getDecsync(info)
-                val addressBook = AndroidAddressBook(account, provider, LocalContact.ContactFactory, LocalContact.GroupFactory)
+            val bookId = AccountManager.get(context).getUserData(account, "id")
+            val info = CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, bookId, account.name, context)
+            val extra = Extra(info, context, provider)
+            val decsync = getDecsync(info)
+            val addressBook = AndroidAddressBook(account, provider, LocalContact.ContactFactory, LocalContact.GroupFactory)
 
-                // Detect deleted contacts
-                provider.query(syncAdapterUri(account, RawContacts.CONTENT_URI),
-                        arrayOf(RawContacts._ID, LocalContact.COLUMN_LOCAL_UID),
-                        "${RawContacts.DELETED}=1", null, null
-                )!!.use { cursor ->
-                    while (cursor.moveToNext()) {
-                        val id = cursor.getString(0)
-                        val uid = cursor.getString(1)
+            // Detect deleted contacts
+            provider.query(syncAdapterUri(account, RawContacts.CONTENT_URI),
+                    arrayOf(RawContacts._ID, LocalContact.COLUMN_LOCAL_UID),
+                    "${RawContacts.DELETED}=1", null, null
+            )!!.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val id = cursor.getString(0)
+                    val uid = cursor.getString(1)
 
-                        val values = ContentValues()
-                        values.put(RawContacts._ID, id)
-                        values.put(LocalContact.COLUMN_LOCAL_UID, uid)
-                        LocalContact(addressBook, values).writeDeleteAction(decsync)
-                        addToNumProcessedEntries(extra, -1)
-                    }
+                    val values = ContentValues()
+                    values.put(RawContacts._ID, id)
+                    values.put(LocalContact.COLUMN_LOCAL_UID, uid)
+                    LocalContact(addressBook, values).writeDeleteAction(decsync)
+                    addToNumProcessedEntries(extra, -1)
                 }
-
-                // Detect dirty contacts
-                provider.query(syncAdapterUri(account, RawContacts.CONTENT_URI),
-                        arrayOf(RawContacts._ID, LocalContact.COLUMN_LOCAL_UID, RawContacts.SOURCE_ID),
-                        "${RawContacts.DIRTY}=1", null, null)!!.use { cursor ->
-                    while (cursor.moveToNext()) {
-                        val id = cursor.getLong(0)
-                        val uid = cursor.getString(1)
-                        val newContact = cursor.isNull(2)
-
-                        val values = ContentValues()
-                        values.put(RawContacts._ID, id)
-                        values.put(LocalContact.COLUMN_LOCAL_UID, uid)
-                        values.put(LocalContact.COLUMN_LOCAL_BOOKID, bookId)
-                        LocalContact(addressBook, values).writeUpdateAction(decsync)
-                        if (newContact) {
-                            addToNumProcessedEntries(extra, 1)
-                        }
-                    }
-                }
-
-                decsync.executeAllNewEntries(extra)
-            } catch (e: Exception) {
-                val builder = errorNotificationBuilder(context).apply {
-                    setSmallIcon(R.drawable.ic_notification)
-                    if (PrefUtils.hasOldDecsyncDir(context)) {
-                        setContentTitle("DecSync CC updated")
-                        setContentText("The DecSync directory needs to be reselected")
-                    } else {
-                        setContentTitle("DecSync")
-                        setContentText(e.message)
-                    }
-                    setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), 0))
-                    setAutoCancel(true)
-                }
-                with(NotificationManagerCompat.from(context)) {
-                    notify(0, builder.build())
-                }
-                syncResult.databaseError = true
-                return
             }
+
+            // Detect dirty contacts
+            provider.query(syncAdapterUri(account, RawContacts.CONTENT_URI),
+                    arrayOf(RawContacts._ID, LocalContact.COLUMN_LOCAL_UID, RawContacts.SOURCE_ID),
+                    "${RawContacts.DIRTY}=1", null, null)!!.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val id = cursor.getLong(0)
+                    val uid = cursor.getString(1)
+                    val newContact = cursor.isNull(2)
+
+                    val values = ContentValues()
+                    values.put(RawContacts._ID, id)
+                    values.put(LocalContact.COLUMN_LOCAL_UID, uid)
+                    values.put(LocalContact.COLUMN_LOCAL_BOOKID, bookId)
+                    LocalContact(addressBook, values).writeUpdateAction(decsync)
+                    if (newContact) {
+                        addToNumProcessedEntries(extra, 1)
+                    }
+                }
+            }
+
+            decsync.executeAllNewEntries(extra)
         }
     }
 }
