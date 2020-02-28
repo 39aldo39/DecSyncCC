@@ -65,6 +65,12 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val currentAppVersion = 1
+        val appVersion = PrefUtils.getAppVersion(this)
+        if (appVersion != currentAppVersion) {
+            PrefUtils.putAppVersion(this, currentAppVersion)
+        }
+
         setContentView(R.layout.activity_main)
 
         // Address books toolbar

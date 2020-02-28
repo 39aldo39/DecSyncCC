@@ -23,9 +23,21 @@ import android.preference.PreferenceManager
 import org.decsync.library.getDefaultDecsyncDir
 
 object PrefUtils {
+    const val APP_VERSION = "app.version"
     const val DECSYNC_DIRECTORY = "decsync.directory"
     const val DECSYNC_DIRECTORY_RESET = "decsync.directory_reset"
     const val HINT_BATTERY_OPTIMIZATIONS = "hint.battery_optimizations"
+
+    fun getAppVersion(context: Context): Int {
+        val settings = PreferenceManager.getDefaultSharedPreferences(context)
+        return settings.getInt(APP_VERSION, 0)
+    }
+
+    fun putAppVersion(context: Context, value: Int) {
+        val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
+        editor.putInt(APP_VERSION, value)
+        editor.apply()
+    }
 
     fun getDecsyncDir(context: Context): String {
         val settings = PreferenceManager.getDefaultSharedPreferences(context)
