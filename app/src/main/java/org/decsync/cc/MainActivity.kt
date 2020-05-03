@@ -49,10 +49,8 @@ import org.decsync.cc.calendars.CalendarDecsyncUtils.addColor
 import org.decsync.cc.contacts.ContactDecsyncUtils
 import org.decsync.cc.contacts.KEY_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.contacts.syncAdapterUri
-import org.decsync.library.Decsync
-import org.decsync.library.DecsyncException
-import org.decsync.library.checkDecsyncInfo
-import org.decsync.library.listDecsyncCollections
+import org.decsync.library.*
+import java.io.File
 import java.util.Random
 
 const val TAG = "DecSyncCC"
@@ -346,7 +344,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                 val extra = Extra(info, this, provider)
                                 setNumProcessedEntries(extra, 0)
                                 decsync.initStoredEntries()
-                                decsync.executeStoredEntriesForPath(listOf("resources"), extra)
+                                decsync.executeStoredEntriesForPathPrefix(listOf("resources"), extra)
                             } finally {
                                 if (Build.VERSION.SDK_INT >= 24)
                                     provider.close()
@@ -411,7 +409,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                 val extra = Extra(info, this, provider)
                                 setNumProcessedEntries(extra, 0)
                                 decsync.initStoredEntries()
-                                decsync.executeStoredEntriesForPath(listOf("resources"), extra)
+                                decsync.executeStoredEntriesForPathPrefix(listOf("resources"), extra)
                                 with(NotificationManagerCompat.from(this)) {
                                     cancel(info.notificationId)
                                 }
@@ -552,7 +550,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                     }
                                 }
                                 val extra = Extra(0)
-                                countDecsync.executeStoredEntriesForPath(listOf("resources"), extra)
+                                countDecsync.executeStoredEntriesForPathPrefix(listOf("resources"), extra)
                                 return extra.count
                             }
 

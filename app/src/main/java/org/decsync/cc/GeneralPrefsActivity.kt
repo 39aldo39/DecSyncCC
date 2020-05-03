@@ -38,7 +38,7 @@ import com.nononsenseapps.filepicker.Utils
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.library.DecsyncException
 import org.decsync.library.checkDecsyncInfo
-import org.decsync.library.getDefaultDecsyncDir
+import java.io.File
 
 const val CHOOSE_DECSYNC_DIRECTORY = 0
 
@@ -74,10 +74,10 @@ class GeneralPrefsActivity : AppCompatActivity() {
         }
 
         private fun initDecsyncDir() {
-            val context = activity!!
+            val context = requireActivity()
 
             val preference = findPreference<Preference>(PrefUtils.DECSYNC_DIRECTORY)!!
-            preference.summary = PrefUtils.getDecsyncDir(context)
+            preference.summary = PrefUtils.getDecsyncDir(context).path
             preference.setOnPreferenceClickListener {
                 if (!checkCollectionEnabled()) {
                     val intent = Intent(context, FilePickerActivity::class.java)
@@ -91,17 +91,17 @@ class GeneralPrefsActivity : AppCompatActivity() {
         }
 
         private fun initDecsyncDirReset() {
-            val context = activity!!
+            val context = requireActivity()
 
             val preference = findPreference<Preference>(PrefUtils.DECSYNC_DIRECTORY_RESET)!!
             preference.setOnPreferenceClickListener {
                 if (!checkCollectionEnabled()) {
                     AlertDialog.Builder(context)
                             .setTitle("Reset DecSync directory")
-                            .setMessage("Do you want to reset the DecSync directory to the default location '${getDefaultDecsyncDir()}'?")
+                            .setMessage("Do you want to reset the DecSync directory to the default location '${PrefUtils.defaultDecsyncDir}'?")
                             .setNegativeButton("No") { _, _ -> }
                             .setPositiveButton("Yes") { _, _ ->
-                                setDecsyncDir(getDefaultDecsyncDir())
+                                setDecsyncDir(PrefUtils.defaultDecsyncDir)
                             }
                             .show()
                 }
@@ -110,7 +110,7 @@ class GeneralPrefsActivity : AppCompatActivity() {
         }
 
         private fun checkCollectionEnabled(): Boolean {
-            val context = activity!!
+            val context = requireActivity()
 
             val addressBookAccounts = AccountManager.get(context).getAccountsByType(getString(R.string.account_type_contacts))
             val anyAddressBookEnabled = addressBookAccounts.isNotEmpty()
@@ -146,12 +146,12 @@ class GeneralPrefsActivity : AppCompatActivity() {
             }
         }
 
-        private fun setDecsyncDir(dir: String) {
-            val context = activity!!
+        private fun setDecsyncDir(dir: File) {
+            val context = requireActivity()
             try {
                 checkDecsyncInfo(dir)
                 PrefUtils.putDecsyncDir(context, dir)
-                findPreference<Preference>(PrefUtils.DECSYNC_DIRECTORY)!!.summary = dir
+                findPreference<Preference>(PrefUtils.DECSYNC_DIRECTORY)!!.summary = dir.path
             } catch (e: DecsyncException) {
                 AlertDialog.Builder(context)
                         .setTitle("DecSync")
@@ -165,11 +165,11 @@ class GeneralPrefsActivity : AppCompatActivity() {
             super.onActivityResult(requestCode, resultCode, data)
 
             if (requestCode == CHOOSE_DECSYNC_DIRECTORY) {
-                val context = activity!!
+                val context = requireActivity()
                 val uri = data?.data
                 if (resultCode == Activity.RESULT_OK && uri != null) {
                     val oldDir = PrefUtils.getDecsyncDir(context)
-                    val newDir = Utils.getFileForUri(uri).path
+                    val newDir = Utils.getFileForUri(uri)
                     if (oldDir != newDir) {
                         setDecsyncDir(newDir)
                     }
