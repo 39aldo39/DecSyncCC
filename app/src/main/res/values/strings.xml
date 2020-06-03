@@ -7,14 +7,14 @@
   ~ http://www.gnu.org/licenses/gpl.html
   -->
 <resources>
-    <string name="app_name">DecSync CC</string>
-    <string name="title_activity_main">DecSync CC</string>
+    <string name="app_name" translatable="false">DecSync CC</string>
+    <string name="title_activity_main" translatable="false">DecSync CC</string>
     <string name="title_activity_settings">Settings</string>
 
     <string name="account_name_contacts">DecSync Contacts</string>
     <string name="account_name_calendars">DecSync Calendars</string>
-    <string name="account_type_contacts">org.decsync.contacts</string>
-    <string name="account_type_calendars">org.decsync.calendars</string>
+    <string name="account_type_contacts" translatable="false">org.decsync.contacts</string>
+    <string name="account_type_calendars" translatable="false">org.decsync.calendars</string>
 
     <!-- MainActivity -->
     <string name="account_contacts">Address books</string>
