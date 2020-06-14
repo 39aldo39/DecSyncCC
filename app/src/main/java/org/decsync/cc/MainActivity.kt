@@ -133,7 +133,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
             AlertDialog.Builder(this)
                     .setTitle("DecSync")
                     .setMessage(e.message)
-                    .setPositiveButton("OK") { _, _ -> }
+                    .setPositiveButton(android.R.string.ok) { _, _ -> }
                     .show()
             return
         }
@@ -243,9 +243,9 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                 }
                 val input = EditText(this)
                 AlertDialog.Builder(this)
-                        .setTitle("Name for new collection")
+                        .setTitle(R.string.create_collection_title)
                         .setView(input)
-                        .setPositiveButton("OK") { _, _ ->
+                        .setPositiveButton(android.R.string.ok) { _, _ ->
                             val name = input.text.toString()
                             if (!name.isBlank()) {
                                 val id = "colID%05d".format(Random().nextInt(100000))
@@ -255,7 +255,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                 loadBooks()
                             }
                         }
-                        .setNegativeButton("Cancel") { _, _ -> }
+                        .setNegativeButton(android.R.string.cancel) { _, _ -> }
                         .show()
             }
             R.id.create_calendar -> {
@@ -275,9 +275,9 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                 }
                 val input = EditText(this)
                 AlertDialog.Builder(this)
-                        .setTitle("Name for new collection")
+                        .setTitle(R.string.create_collection_title)
                         .setView(input)
-                        .setPositiveButton("OK") { _, _ ->
+                        .setPositiveButton(android.R.string.ok) { _, _ ->
                             val name = input.text.toString()
                             if (!name.isBlank()) {
                                 val id = "colID%05d".format(Random().nextInt(100000))
@@ -287,7 +287,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                 loadCalendars()
                             }
                         }
-                        .setNegativeButton("Cancel") { _, _ -> }
+                        .setNegativeButton(android.R.string.cancel) { _, _ -> }
                         .show()
             }
             R.id.change_calendar_colors -> {
@@ -333,7 +333,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     AsyncTask.execute {
                         val builder = initSyncNotificationBuilder(this).apply {
                             setSmallIcon(R.drawable.ic_notification)
-                            setContentTitle("Adding contacts of ${info.name}")
+                            setContentTitle(getString(R.string.notification_adding_contacts, info.name))
                         }
                         with(NotificationManagerCompat.from(this)) {
                             notify(info.notificationId, builder.build())
@@ -399,7 +399,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             AsyncTask.execute {
                                 val builder = initSyncNotificationBuilder(this).apply {
                                     setSmallIcon(R.drawable.ic_notification)
-                                    setContentTitle("Adding events of ${info.name}")
+                                    setContentTitle(getString(R.string.notification_adding_events, info.name))
                                 }
                                 with(NotificationManagerCompat.from(this)) {
                                     notify(info.notificationId, builder.build())
@@ -469,24 +469,24 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     val input = EditText(this)
                     input.setText(info.name)
                     AlertDialog.Builder(this)
-                            .setTitle("New name for collection")
+                            .setTitle(R.string.rename_collection_title)
                             .setView(input)
-                            .setPositiveButton("OK") { _, _ ->
+                            .setPositiveButton(android.R.string.ok) { _, _ ->
                                 val name = input.text.toString()
                                 if (!name.isBlank() && name != info.name) {
                                     setCollectionInfo(info, JsonLiteral("name"), JsonLiteral(name))
                                 }
                             }
-                            .setNegativeButton("Cancel") { _, _ -> }
+                            .setNegativeButton(android.R.string.cancel) { _, _ -> }
                             .show()
                 }
                 R.id.delete_collection -> {
                     AlertDialog.Builder(this)
-                            .setTitle("Are you sure you want to delete the collection '${info.name}'?")
-                            .setPositiveButton("OK") { _, _ ->
+                            .setTitle(getString(R.string.delete_collection_title, info.name))
+                            .setPositiveButton(android.R.string.yes) { _, _ ->
                                 setCollectionInfo(info, JsonLiteral("deleted"), JsonLiteral(true))
                             }
-                            .setNegativeButton("Cancel") { _, _ -> }
+                            .setNegativeButton(android.R.string.no) { _, _ -> }
                             .show()
                 }
                 R.id.entries_count -> {
@@ -530,13 +530,16 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                         }
 
                         class DecsyncEntriesTask(
+                                val mContext: Context,
                                 val mDialog: AlertDialog,
-                                val mMessage: String,
+                                val mAndroidEntries: Int?,
+                                val mProcessedEntries: Int?,
                                 val mInfo: CollectionInfo
                         ) : AsyncTask<Void, Void, Int>() {
                             override fun onPreExecute() {
                                 super.onPreExecute()
-                                mDialog.setMessage(mMessage.format("…"))
+                                val message = mContext.getString(R.string.entries_count_message, mAndroidEntries, mProcessedEntries, "…")
+                                mDialog.setMessage(message)
                                 mDialog.show()
                             }
 
@@ -556,20 +559,18 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
                             override fun onPostExecute(decsyncEntries: Int) {
                                 super.onPostExecute(decsyncEntries)
-                                mDialog.setMessage(mMessage.format("$decsyncEntries"))
+                                val message = mContext.getString(R.string.entries_count_message, mAndroidEntries, mProcessedEntries, "%d".format(decsyncEntries))
+                                mDialog.setMessage(message)
                             }
                         }
 
                         val dialog = AlertDialog.Builder(this)
-                                .setTitle("Entries count")
-                                .setNeutralButton("OK") { dialog, _ ->
+                                .setTitle(R.string.entries_count_title)
+                                .setNeutralButton(android.R.string.ok) { dialog, _ ->
                                     dialog.dismiss()
                                 }
                                 .create()
-                        val message = "Android entries: $androidEntries\n" +
-                                "Processed entries: $processedEntries\n" +
-                                "DecSync entries: %s"
-                        DecsyncEntriesTask(dialog, message, info).execute()
+                        DecsyncEntriesTask(this, dialog, androidEntries, processedEntries, info).execute()
                     }
                 }
             }

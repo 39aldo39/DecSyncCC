@@ -27,12 +27,21 @@
     <string name="account_refresh_calendar_list">Refresh calendar list</string>
     <string name="account_create_new_calendar">Create new calendar</string>
     <string name="change_calendar_colors">Change calendar colors</string>
+    <string name="create_collection_title">Name for new collection</string>
     <string name="rename_collection">Rename collection</string>
+    <string name="rename_collection_title">New name for collection</string>
     <string name="delete_collection">Delete collection</string>
+    <string name="delete_collection_title">Are you sure you want to delete the collection \'%s\'?</string>
     <string name="entries_count">Entries count</string>
+    <string name="entries_count_title">Entries count</string>
+    <string name="entries_count_message">Android entries: %d\nProcessed entries: %d\nDecSync entries: %s</string>
     <string name="account_settings">Settings</string>
 
-    <!-- startup dialogs -->
+    <!-- Notifications -->
+    <string name="notification_adding_contacts">Adding contacts of %s</string>
+    <string name="notification_adding_events">Adding events of %s</string>
+
+    <!-- Startup dialogs -->
     <string name="startup_battery_optimization">Scheduled synchronization</string>
     <string name="startup_battery_optimization_message">Your device will restrain DecSync CC synchronization. To enforce regular DecSync CC sync intervals, turn off \"battery optimization\".</string>
     <string name="startup_battery_optimization_disable">Turn off for DecSync CC</string>
@@ -44,6 +53,10 @@
     <string name="settings_category_decsync">DecSync</string>
     <string name="settings_decsync_directory">DecSync directory</string>
     <string name="settings_decsync_directory_reset">Reset DecSync directory</string>
+    <string name="settings_decsync_directory_reset_title">Reset DecSync directory</string>
+    <string name="settings_decsync_directory_reset_message">Do you want to reset the DecSync directory to the default location \'%s\'?</string>
+    <string name="settings_decsync_collections_enabled_title">Enabled collections</string>
+    <string name="settings_decsync_collections_enabled_message">There are still some collections enabled. Disable all collections before changing the DecSync directory.</string>
 
     <!-- Notification channel -->
     <string name="channel_init_sync_name">Initial sync</string>

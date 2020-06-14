@@ -97,10 +97,10 @@ class GeneralPrefsActivity : AppCompatActivity() {
             preference.setOnPreferenceClickListener {
                 if (!checkCollectionEnabled()) {
                     AlertDialog.Builder(context)
-                            .setTitle("Reset DecSync directory")
-                            .setMessage("Do you want to reset the DecSync directory to the default location '${PrefUtils.defaultDecsyncDir}'?")
-                            .setNegativeButton("No") { _, _ -> }
-                            .setPositiveButton("Yes") { _, _ ->
+                            .setTitle(R.string.settings_decsync_directory_reset_title)
+                            .setMessage(getString(R.string.settings_decsync_directory_reset_message, PrefUtils.defaultDecsyncDir))
+                            .setNegativeButton(android.R.string.no) { _, _ -> }
+                            .setPositiveButton(android.R.string.yes) { _, _ ->
                                 setDecsyncDir(PrefUtils.defaultDecsyncDir)
                             }
                             .show()
@@ -136,9 +136,9 @@ class GeneralPrefsActivity : AppCompatActivity() {
 
             return if (anyAddressBookEnabled || anyCalendarEnabled) {
                 AlertDialog.Builder(context)
-                        .setTitle("Enabled collections")
-                        .setMessage("There are still some collections enabled. Disable all collections before changing the DecSync directory.")
-                        .setNeutralButton("OK") { _, _ -> }
+                        .setTitle(R.string.settings_decsync_collections_enabled_title)
+                        .setMessage(R.string.settings_decsync_collections_enabled_message)
+                        .setNeutralButton(android.R.string.ok) { _, _ -> }
                         .show()
                 true
             } else {
@@ -156,7 +156,7 @@ class GeneralPrefsActivity : AppCompatActivity() {
                 AlertDialog.Builder(context)
                         .setTitle("DecSync")
                         .setMessage(e.message)
-                        .setPositiveButton("OK") { _, _ -> }
+                        .setPositiveButton(android.R.string.ok) { _, _ -> }
                         .show()
             }
         }
