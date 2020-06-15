@@ -23,10 +23,19 @@
     <string name="account_refresh_calendar_list">Acualizar lista de calendario</string>
     <string name="account_create_new_calendar">Crear nuevo calendario</string>
     <string name="change_calendar_colors">Cambiar color de calendario</string>
+    <string name="create_collection_title">Nombre para la nueva colección</string>
     <string name="rename_collection">Renombrar colección</string>
+    <string name="rename_collection_title">Nuevo nombre para la colección</string>
     <string name="delete_collection">Borrar colección</string>
+    <string name="delete_collection_title">¿Estás seguro que quieres borrar la colección \'%s\'?</string>
     <string name="entries_count">Entradas contadas</string>
+    <string name="entries_count_title">Entradas contadas</string>
+    <string name="entries_count_message">Entradas Android: %d\nEntradas procesadas: %d\nEntradas DecSync: %s</string>
     <string name="account_settings">Ajustes</string>
+    
+    <!-- Notifications -->
+    <string name="notification_adding_contacts">Añadiendo contactos de %s</string>
+    <string name="notification_adding_events">Añadiendo eventos de %s</string>
 
     <!-- startup dialogs -->
     <string name="startup_battery_optimization">Sincronización programada</string>
@@ -40,6 +49,10 @@
     <string name="settings_category_decsync">DecSync</string>
     <string name="settings_decsync_directory">Carpeta DecSync</string>
     <string name="settings_decsync_directory_reset">Reestablecer carpeta DecSync</string>
+    <string name="settings_decsync_directory_reset_title">Reestablecer carpeta DecSync</string>
+    <string name="settings_decsync_directory_reset_message">¿Desea restablecer el directorio de DecSync a la ubicación predeterminada \'%s\'?</string>
+    <string name="settings_decsync_collections_enabled_title">Enabled collections</string>
+    <string name="settings_decsync_collections_enabled_message">Todavía hay algunas colecciones activadas. Desactiva todas las colecciones antes de cambiar el directorio de DecSync.</string>
 
     <!-- Notification channel -->
     <string name="channel_init_sync_name">Iniciar sincronización</string>
