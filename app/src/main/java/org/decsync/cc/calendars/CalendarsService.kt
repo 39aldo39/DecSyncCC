@@ -30,12 +30,9 @@ import android.provider.CalendarContract.Events
 import androidx.core.content.ContextCompat
 import at.bitfire.ical4android.AndroidCalendar
 import kotlinx.serialization.json.JsonLiteral
-import org.decsync.cc.CollectionInfo
-import org.decsync.cc.Extra
-import org.decsync.cc.addToNumProcessedEntries
+import org.decsync.cc.*
 import org.decsync.cc.calendars.CalendarDecsyncUtils.CalendarFactory
 import org.decsync.cc.contacts.syncAdapterUri
-import org.decsync.cc.getDecsync
 
 class CalendarsService : Service() {
 
@@ -61,6 +58,8 @@ class CalendarsService : Service() {
                 syncResult.databaseError = true
                 return
             }
+
+            PrefUtils.checkAppUpgrade(context)
 
             // Required for ical4android
             Thread.currentThread().contextClassLoader = context.classLoader

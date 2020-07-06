@@ -63,11 +63,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val currentAppVersion = 1
-        val appVersion = PrefUtils.getAppVersion(this)
-        if (appVersion != currentAppVersion) {
-            PrefUtils.putAppVersion(this, currentAppVersion)
-        }
+        PrefUtils.checkAppUpgrade(this)
 
         setContentView(R.layout.activity_main)
 
@@ -250,7 +246,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             if (!name.isBlank()) {
                                 val id = "colID%05d".format(Random().nextInt(100000))
                                 val info = CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, id, name, this)
-                                val decsync = Decsync<Unit>(info.decsyncDir, info.syncType, info.collection, ownAppId)
+                                val decsync = Decsync<Unit>(info.decsyncDir, info.syncType, info.collection, info.appId)
                                 decsync.setEntry(listOf("info"), JsonLiteral("name"), JsonLiteral(name))
                                 loadBooks()
                             }
@@ -282,7 +278,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             if (!name.isBlank()) {
                                 val id = "colID%05d".format(Random().nextInt(100000))
                                 val info = CollectionInfo(CollectionInfo.Type.CALENDAR, id, name, this)
-                                val decsync = Decsync<Unit>(info.decsyncDir, info.syncType, info.collection, ownAppId)
+                                val decsync = Decsync<Unit>(info.decsyncDir, info.syncType, info.collection, info.appId)
                                 decsync.setEntry(listOf("info"), JsonLiteral("name"), JsonLiteral(name))
                                 loadCalendars()
                             }

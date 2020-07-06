@@ -40,6 +40,7 @@ class CollectionInfo (
     val decsyncDir = PrefUtils.getDecsyncDir(context)
     val syncType = type.toString()
     val collection = id
+    val appId = PrefUtils.getOwnAppId(context)
     val notificationId = 2 * id.hashCode() + type.ordinal
 
     enum class Type {

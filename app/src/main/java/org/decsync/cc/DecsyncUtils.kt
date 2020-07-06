@@ -29,13 +29,10 @@ import org.decsync.cc.contacts.ContactDecsyncUtils
 import org.decsync.cc.contacts.KEY_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.library.Decsync
-import org.decsync.library.getAppId
-
-val ownAppId = getAppId("DecSyncCC")
 
 @ExperimentalStdlibApi
 fun getDecsync(info: CollectionInfo): Decsync<Extra> {
-    val decsync = Decsync<Extra>(info.decsyncDir, info.syncType, info.collection, ownAppId)
+    val decsync = Decsync<Extra>(info.decsyncDir, info.syncType, info.collection, info.appId)
     val infoListener = when (info.type) {
         CollectionInfo.Type.ADDRESS_BOOK -> ContactDecsyncUtils::infoListener
         CollectionInfo.Type.CALENDAR -> CalendarDecsyncUtils::infoListener

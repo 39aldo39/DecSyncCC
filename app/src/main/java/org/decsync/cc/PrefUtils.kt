@@ -21,14 +21,18 @@ package org.decsync.cc
 import android.content.Context
 import android.os.Environment
 import android.preference.PreferenceManager
+import org.decsync.library.getAppId
 import java.io.File
+import java.util.*
 
 object PrefUtils {
     const val APP_VERSION = "app.version"
     const val DECSYNC_DIRECTORY = "decsync.directory"
     const val DECSYNC_DIRECTORY_RESET = "decsync.directory_reset"
+    const val OWN_APP_ID = "own_app_id"
     const val HINT_BATTERY_OPTIMIZATIONS = "hint.battery_optimizations"
 
+    val currentAppVersion = 2
     val defaultDecsyncDir = File("${Environment.getExternalStorageDirectory()}/DecSync")
 
     fun getAppVersion(context: Context): Int {
@@ -53,6 +57,22 @@ object PrefUtils {
         editor.apply()
     }
 
+    fun getOwnAppId(context: Context): String {
+        val settings = PreferenceManager.getDefaultSharedPreferences(context)
+        return settings.getString(OWN_APP_ID, null) ?: run {
+            val id = Random().nextInt(100000)
+            getAppId("DecSyncCC", id).also { appId ->
+                putOwnAppId(context, appId)
+            }
+        }
+    }
+
+    fun putOwnAppId(context: Context, value: String) {
+        val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
+        editor.putString(OWN_APP_ID, value)
+        editor.apply()
+    }
+
     fun getHintBatteryOptimizations(context: Context): Boolean {
         val settings = PreferenceManager.getDefaultSharedPreferences(context)
         return settings.getBoolean(HINT_BATTERY_OPTIMIZATIONS, true)
@@ -62,5 +82,17 @@ object PrefUtils {
         val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
         editor.putBoolean(HINT_BATTERY_OPTIMIZATIONS, value)
         editor.apply()
+    }
+
+    fun checkAppUpgrade(context: Context) {
+        val appVersion = getAppVersion(context)
+        if (appVersion != currentAppVersion) {
+            if (appVersion > 0) {
+                if (appVersion < 2) {
+                    putOwnAppId(context, getAppId("DecSyncCC"))
+                }
+            }
+            putAppVersion(context, currentAppVersion)
+        }
     }
 }

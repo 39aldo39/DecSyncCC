@@ -63,6 +63,8 @@ class ContactsService : Service() {
                 return
             }
 
+            PrefUtils.checkAppUpgrade(context)
+
             val bookId = AccountManager.get(context).getUserData(account, "id")
             val info = CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, bookId, account.name, context)
             val extra = Extra(info, context, provider)
