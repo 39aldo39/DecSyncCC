@@ -22,19 +22,17 @@ import android.Manifest
 import android.accounts.Account
 import android.accounts.AccountManager
 import android.app.Service
-import android.content.AbstractThreadedSyncAdapter
-import android.content.ContentProviderClient
-import android.content.ContentValues
-import android.content.Context
-import android.content.Intent
-import android.content.SyncResult
+import android.content.*
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.provider.ContactsContract
 import android.provider.ContactsContract.RawContacts
 import androidx.core.content.ContextCompat
+import androidx.work.Worker
+import androidx.work.WorkerParameters
 import at.bitfire.vcard4android.AndroidAddressBook
 import org.decsync.cc.*
 
@@ -56,11 +54,20 @@ class ContactsService : Service() {
         override fun onPerformSync(account: Account, extras: Bundle,
                                    authority: String, provider: ContentProviderClient,
                                    syncResult: SyncResult) {
+            val success = sync(context, account, provider)
+            if (!success) {
+                syncResult.databaseError = true
+            }
+        }
+    }
+
+    companion object {
+        @ExperimentalStdlibApi
+        fun sync(context: Context, account: Account, provider: ContentProviderClient): Boolean {
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
                     ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED ||
                     ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-                syncResult.databaseError = true
-                return
+                return false
             }
 
             PrefUtils.checkAppUpgrade(context)
@@ -109,6 +116,7 @@ class ContactsService : Service() {
             }
 
             decsync.executeAllNewEntries(extra)
+            return true
         }
     }
 }
@@ -119,4 +127,34 @@ fun syncAdapterUri(account: Account, uri: Uri): Uri {
             .appendQueryParameter(RawContacts.ACCOUNT_TYPE, account.type)
             .appendQueryParameter(ContactsContract.CALLER_IS_SYNCADAPTER, "true")
             .build()
+}
+
+class ContactsWorker(val context: Context, params: WorkerParameters) : Worker(context, params) {
+    @ExperimentalStdlibApi
+    override fun doWork(): Result {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SYNC_STATS) != PackageManager.PERMISSION_GRANTED) {
+            return Result.failure()
+        }
+
+        val provider = context.contentResolver.acquireContentProviderClient(ContactsContract.AUTHORITY) ?: return Result.failure()
+        try {
+            val accounts = AccountManager.get(context).getAccountsByType(context.getString(R.string.account_type_contacts))
+            var allSuccess = true
+            for (account in accounts) {
+                if (ContentResolver.isSyncActive(account, ContactsContract.AUTHORITY)) {
+                    continue
+                }
+
+                val success = ContactsService.sync(context, account, provider)
+                allSuccess = allSuccess and success
+            }
+            return if (allSuccess) Result.success() else Result.failure()
+        } finally {
+            if (Build.VERSION.SDK_INT >= 24)
+                provider.close()
+            else
+                @Suppress("DEPRECATION")
+                provider.release()
+        }
+    }
 }

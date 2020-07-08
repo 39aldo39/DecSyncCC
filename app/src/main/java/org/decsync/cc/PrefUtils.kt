@@ -21,9 +21,15 @@ package org.decsync.cc
 import android.content.Context
 import android.os.Environment
 import android.preference.PreferenceManager
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequest
+import androidx.work.WorkManager
+import org.decsync.cc.calendars.CalendarsWorker
+import org.decsync.cc.contacts.ContactsWorker
 import org.decsync.library.getAppId
 import java.io.File
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 object PrefUtils {
     const val APP_VERSION = "app.version"
@@ -31,6 +37,9 @@ object PrefUtils {
     const val DECSYNC_DIRECTORY_RESET = "decsync.directory_reset"
     const val OWN_APP_ID = "own_app_id"
     const val HINT_BATTERY_OPTIMIZATIONS = "hint.battery_optimizations"
+    const val OFFLINE_SYNC = "offline_sync"
+    const val OFFLINE_SYNC_CALENDARS = "offline_sync.calendars"
+    const val OFFLINE_SYNC_CONTACTS = "offline_sync.contacts"
 
     val currentAppVersion = 2
     val defaultDecsyncDir = File("${Environment.getExternalStorageDirectory()}/DecSync")
@@ -82,6 +91,27 @@ object PrefUtils {
         val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
         editor.putBoolean(HINT_BATTERY_OPTIMIZATIONS, value)
         editor.apply()
+    }
+
+    fun getOfflineSync(context: Context): Boolean {
+        val settings = PreferenceManager.getDefaultSharedPreferences(context)
+        return settings.getBoolean(OFFLINE_SYNC, false)
+    }
+
+    fun updateOfflineSync(context: Context, doOfflineSync: Boolean) {
+        val workManager = WorkManager.getInstance(context)
+        if (doOfflineSync) {
+            val calendarsWorkRequest = PeriodicWorkRequest.Builder(CalendarsWorker::class.java, 1, TimeUnit.HOURS)
+                    .addTag(OFFLINE_SYNC)
+                    .build()
+            val contactsWorkRequest = PeriodicWorkRequest.Builder(ContactsWorker::class.java, 1, TimeUnit.HOURS)
+                    .addTag(OFFLINE_SYNC)
+                    .build()
+            workManager.enqueueUniquePeriodicWork(OFFLINE_SYNC_CALENDARS, ExistingPeriodicWorkPolicy.REPLACE, calendarsWorkRequest)
+            workManager.enqueueUniquePeriodicWork(OFFLINE_SYNC_CONTACTS, ExistingPeriodicWorkPolicy.REPLACE, contactsWorkRequest)
+        } else {
+            workManager.cancelAllWorkByTag(OFFLINE_SYNC)
+        }
     }
 
     fun checkAppUpgrade(context: Context) {

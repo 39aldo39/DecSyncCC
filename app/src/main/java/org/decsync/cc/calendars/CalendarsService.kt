@@ -23,11 +23,15 @@ import android.accounts.Account
 import android.app.Service
 import android.content.*
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.provider.CalendarContract
 import android.provider.CalendarContract.Calendars
 import android.provider.CalendarContract.Events
 import androidx.core.content.ContextCompat
+import androidx.work.Worker
+import androidx.work.WorkerParameters
 import at.bitfire.ical4android.AndroidCalendar
 import kotlinx.serialization.json.JsonLiteral
 import org.decsync.cc.*
@@ -52,11 +56,20 @@ class CalendarsService : Service() {
         override fun onPerformSync(account: Account, extras: Bundle,
                                    authority: String, provider: ContentProviderClient,
                                    syncResult: SyncResult) {
+            val success = sync(context, account, provider)
+            if (!success) {
+                syncResult.databaseError = true
+            }
+        }
+    }
+
+    companion object {
+        @ExperimentalStdlibApi
+        fun sync(context: Context, account: Account, provider: ContentProviderClient): Boolean {
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
                     ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED ||
                     ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
-                syncResult.databaseError = true
-                return
+                return false
             }
 
             PrefUtils.checkAppUpgrade(context)
@@ -127,6 +140,34 @@ class CalendarsService : Service() {
                     decsync.executeAllNewEntries(extra)
                 }
             }
+
+            return true
+        }
+    }
+}
+
+class CalendarsWorker(val context: Context, params: WorkerParameters) : Worker(context, params) {
+    @ExperimentalStdlibApi
+    override fun doWork(): Result {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SYNC_STATS) != PackageManager.PERMISSION_GRANTED) {
+            return Result.failure()
+        }
+
+        val calendarsAccount = Account(context.getString(R.string.account_name_calendars), context.getString(R.string.account_type_calendars))
+        if (ContentResolver.isSyncActive(calendarsAccount, CalendarContract.AUTHORITY)) {
+            return Result.success()
+        }
+
+        val provider = context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY) ?: return Result.failure()
+        try {
+            val success = CalendarsService.sync(context, calendarsAccount, provider)
+            return if (success) Result.success() else Result.failure()
+        } finally {
+            if (Build.VERSION.SDK_INT >= 24)
+                provider.close()
+            else
+                @Suppress("DEPRECATION")
+                provider.release()
         }
     }
 }

@@ -71,6 +71,7 @@ class GeneralPrefsActivity : AppCompatActivity() {
 
             initDecsyncDir()
             initDecsyncDirReset()
+            initOfflineSync()
         }
 
         private fun initDecsyncDir() {
@@ -158,6 +159,15 @@ class GeneralPrefsActivity : AppCompatActivity() {
                         .setMessage(e.message)
                         .setPositiveButton(android.R.string.ok) { _, _ -> }
                         .show()
+            }
+        }
+
+        private fun initOfflineSync() {
+            val context = requireActivity()
+            val preference = findPreference<Preference>(PrefUtils.OFFLINE_SYNC)!!
+            preference.setOnPreferenceChangeListener { _, enabled ->
+                PrefUtils.updateOfflineSync(context, enabled as Boolean)
+                true
             }
         }
 

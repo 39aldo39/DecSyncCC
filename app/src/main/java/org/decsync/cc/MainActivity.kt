@@ -50,7 +50,6 @@ import org.decsync.cc.contacts.ContactDecsyncUtils
 import org.decsync.cc.contacts.KEY_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.library.*
-import java.io.File
 import java.util.Random
 
 const val TAG = "DecSyncCC"
@@ -71,13 +70,15 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         contacts_menu.inflateMenu(R.menu.address_book_actions)
         contacts_menu.setOnMenuItemClickListener(this)
 
-        // Calendars toolbar
+        // Calendars sync adapter
         val calendarsAccount = Account(getString(R.string.account_name_calendars), getString(R.string.account_type_calendars))
         val success = AccountManager.get(this).addAccountExplicitly(calendarsAccount, null, null)
         if (success) {
             ContentResolver.setSyncAutomatically(calendarsAccount, CalendarContract.AUTHORITY, true)
             ContentResolver.addPeriodicSync(calendarsAccount, CalendarContract.AUTHORITY, Bundle(), 60 * 60)
         }
+
+        // Calendars toolbar
         calendars_menu.inflateMenu(R.menu.calendar_actions)
         calendars_menu.setOnMenuItemClickListener(this)
 
@@ -190,6 +191,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.sync_now -> {
+                // Using sync adapter
                 val extras = Bundle()
                 extras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true) // Manual sync
                 extras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true) // Run immediately (don't queue)
@@ -205,6 +207,11 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     if (!info.isEnabled(this)) continue
                     val account = info.getAccount(this)
                     ContentResolver.requestSync(account, contactsAuthority, extras)
+                }
+
+                // Using work manager (if enabled)
+                if (PrefUtils.getOfflineSync(this)) {
+                    PrefUtils.updateOfflineSync(this, true)
                 }
 
                 Snackbar.make(findViewById(R.id.parent), R.string.account_synchronizing_now, Snackbar.LENGTH_LONG).show()
