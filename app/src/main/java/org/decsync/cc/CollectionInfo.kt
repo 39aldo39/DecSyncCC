@@ -57,7 +57,7 @@ class CollectionInfo (
     fun getAccount(context: Context): Account {
         val accountName = when (type) {
             Type.ADDRESS_BOOK -> name
-            Type.CALENDAR -> context.getString(R.string.account_name_calendars)
+            Type.CALENDAR -> PrefUtils.getCalendarAccountName(context)
         }
         val accountType = when (type) {
             Type.ADDRESS_BOOK -> context.getString(R.string.account_type_contacts)

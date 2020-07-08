@@ -40,6 +40,7 @@ object PrefUtils {
     const val OFFLINE_SYNC = "offline_sync"
     const val OFFLINE_SYNC_CALENDARS = "offline_sync.calendars"
     const val OFFLINE_SYNC_CONTACTS = "offline_sync.contacts"
+    const val CALENDAR_ACCOUNT_NAME = "calendar_account_name"
 
     val currentAppVersion = 2
     val defaultDecsyncDir = File("${Environment.getExternalStorageDirectory()}/DecSync")
@@ -114,12 +115,28 @@ object PrefUtils {
         }
     }
 
+    fun getCalendarAccountName(context: Context): String {
+        val settings = PreferenceManager.getDefaultSharedPreferences(context)
+        return settings.getString(CALENDAR_ACCOUNT_NAME, null) ?: run {
+            context.getString(R.string.account_name_calendars).also { name ->
+                putCalendarAccountName(context, name)
+            }
+        }
+    }
+
+    fun putCalendarAccountName(context: Context, value: String) {
+        val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
+        editor.putString(CALENDAR_ACCOUNT_NAME, value)
+        editor.apply()
+    }
+
     fun checkAppUpgrade(context: Context) {
         val appVersion = getAppVersion(context)
         if (appVersion != currentAppVersion) {
             if (appVersion > 0) {
                 if (appVersion < 2) {
                     putOwnAppId(context, getAppId("DecSyncCC"))
+                    putCalendarAccountName(context, "DecSync Calendars")
                 }
             }
             putAppVersion(context, currentAppVersion)

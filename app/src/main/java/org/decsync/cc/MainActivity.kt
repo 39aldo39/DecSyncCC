@@ -71,7 +71,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         contacts_menu.setOnMenuItemClickListener(this)
 
         // Calendars sync adapter
-        val calendarsAccount = Account(getString(R.string.account_name_calendars), getString(R.string.account_type_calendars))
+        val calendarsAccount = Account(PrefUtils.getCalendarAccountName(this), getString(R.string.account_type_calendars))
         val success = AccountManager.get(this).addAccountExplicitly(calendarsAccount, null, null)
         if (success) {
             ContentResolver.setSyncAutomatically(calendarsAccount, CalendarContract.AUTHORITY, true)
@@ -197,7 +197,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                 extras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true) // Run immediately (don't queue)
 
                 val calendarsAuthority = CalendarContract.AUTHORITY
-                val calendarsAccount = Account(getString(R.string.account_name_calendars), getString(R.string.account_type_calendars))
+                val calendarsAccount = Account(PrefUtils.getCalendarAccountName(this), getString(R.string.account_type_calendars))
                 ContentResolver.requestSync(calendarsAccount, calendarsAuthority, extras)
 
                 val contactsAuthority = ContactsContract.AUTHORITY

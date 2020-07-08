@@ -153,7 +153,7 @@ class CalendarsWorker(val context: Context, params: WorkerParameters) : Worker(c
             return Result.failure()
         }
 
-        val calendarsAccount = Account(context.getString(R.string.account_name_calendars), context.getString(R.string.account_type_calendars))
+        val calendarsAccount = Account(PrefUtils.getCalendarAccountName(context), context.getString(R.string.account_type_calendars))
         if (ContentResolver.isSyncActive(calendarsAccount, CalendarContract.AUTHORITY)) {
             return Result.success()
         }

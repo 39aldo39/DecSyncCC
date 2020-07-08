@@ -117,7 +117,7 @@ class GeneralPrefsActivity : AppCompatActivity() {
             val anyAddressBookEnabled = addressBookAccounts.isNotEmpty()
 
             var anyCalendarEnabled = false
-            val calendarsAccount = Account(getString(R.string.account_name_calendars), getString(R.string.account_type_calendars))
+            val calendarsAccount = Account(PrefUtils.getCalendarAccountName(context), getString(R.string.account_type_calendars))
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED) {
                 context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
                     anyCalendarEnabled = try {
