@@ -69,8 +69,8 @@ class LocalEvent: AndroidEvent {
         decsync.setEntry(listOf("resources", uid), JsonNull, JsonLiteral(ical))
     }
 
-    override fun populateEvent(row: ContentValues) {
-        super.populateEvent(row)
+    override fun populateEvent(row: ContentValues, groupScheduled: Boolean) {
+        super.populateEvent(row, groupScheduled)
         val event = requireNotNull(event)
 
         event.uid = row.getAsString(Events.UID_2445)
