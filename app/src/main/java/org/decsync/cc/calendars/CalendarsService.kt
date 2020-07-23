@@ -20,6 +20,7 @@ package org.decsync.cc.calendars
 
 import android.Manifest
 import android.accounts.Account
+import android.app.PendingIntent
 import android.app.Service
 import android.content.*
 import android.content.pm.PackageManager
@@ -29,6 +30,7 @@ import android.os.IBinder
 import android.provider.CalendarContract
 import android.provider.CalendarContract.Calendars
 import android.provider.CalendarContract.Events
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.work.Worker
 import androidx.work.WorkerParameters
@@ -66,8 +68,11 @@ class CalendarsService : Service() {
     companion object {
         @ExperimentalStdlibApi
         fun sync(context: Context, account: Account, provider: ContentProviderClient): Boolean {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED ||
+            if (!PrefUtils.getUseSaf(context) &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                return false
+            }
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED ||
                     ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
                 return false
             }
@@ -90,54 +95,73 @@ class CalendarsService : Service() {
                     val color = calCursor.getInt(3)
                     val oldColor = calCursor.getInt(4)
 
-                    val calendar = AndroidCalendar.findByID(account, provider, CalendarFactory, calendarId)
-                    val info = CollectionInfo(CollectionInfo.Type.CALENDAR, decsyncId, name, context)
-                    val extra = Extra(info, context, provider)
-                    val decsync = getDecsync(info)
+                    try {
+                        val calendar = AndroidCalendar.findByID(account, provider, CalendarFactory, calendarId)
+                        val info = CollectionInfo(CollectionInfo.Type.CALENDAR, decsyncId, name, context)
+                        val extra = Extra(info, context, provider)
+                        val decsync = getDecsync(info)
 
-                    // Detect changed color
-                    if (color != oldColor) {
-                        decsync.setEntry(listOf("info"), JsonLiteral("color"), JsonLiteral(String.format("#%06X", color and 0xFFFFFF)))
-
-                        val values = ContentValues()
-                        values.put(COLUMN_OLD_COLOR, color)
-                        provider.update(syncAdapterUri(account, Calendars.CONTENT_URI),
-                                values, "${Calendars._ID}=?", arrayOf(calendarId.toString()))
-                    }
-
-                    // Detect deleted events
-                    provider.query(syncAdapterUri(account, Events.CONTENT_URI), arrayOf(Events._ID),
-                            "${Events.CALENDAR_ID}=? AND ${Events.DELETED}=1",
-                            arrayOf(calendarId.toString()), null)!!.use { cursor ->
-                        while (cursor.moveToNext()) {
-                            val id = cursor.getLong(0)
+                        // Detect changed color
+                        if (color != oldColor) {
+                            decsync.setEntry(listOf("info"), JsonLiteral("color"), JsonLiteral(String.format("#%06X", color and 0xFFFFFF)))
 
                             val values = ContentValues()
-                            values.put(Events._ID, id)
-                            LocalEvent(calendar, values).writeDeleteAction(decsync)
-                            addToNumProcessedEntries(extra, -1)
+                            values.put(COLUMN_OLD_COLOR, color)
+                            provider.update(syncAdapterUri(account, Calendars.CONTENT_URI),
+                                    values, "${Calendars._ID}=?", arrayOf(calendarId.toString()))
                         }
-                    }
 
-                    // Detect dirty events
-                    provider.query(syncAdapterUri(account, Events.CONTENT_URI),
-                            arrayOf(Events._ID, Events.ORIGINAL_ID, Events._SYNC_ID),
-                            "${Events.CALENDAR_ID}=? AND ${Events.DIRTY}=1",
-                            arrayOf(calendarId.toString()), null)!!.use { cursor ->
-                        while (cursor.moveToNext()) {
-                            val id = cursor.getString(1) ?: cursor.getString(0)
-                            val newEvent = cursor.isNull(1) && cursor.isNull(2)
+                        // Detect deleted events
+                        provider.query(syncAdapterUri(account, Events.CONTENT_URI), arrayOf(Events._ID),
+                                "${Events.CALENDAR_ID}=? AND ${Events.DELETED}=1",
+                                arrayOf(calendarId.toString()), null)!!.use { cursor ->
+                            while (cursor.moveToNext()) {
+                                val id = cursor.getLong(0)
 
-                            val values = ContentValues()
-                            values.put(Events._ID, id)
-                            LocalEvent(calendar, values).writeUpdateAction(decsync)
-                            if (newEvent) {
-                                addToNumProcessedEntries(extra, 1)
+                                val values = ContentValues()
+                                values.put(Events._ID, id)
+                                LocalEvent(calendar, values).writeDeleteAction(decsync)
+                                addToNumProcessedEntries(extra, -1)
                             }
                         }
-                    }
 
-                    decsync.executeAllNewEntries(extra)
+                        // Detect dirty events
+                        provider.query(syncAdapterUri(account, Events.CONTENT_URI),
+                                arrayOf(Events._ID, Events.ORIGINAL_ID, Events._SYNC_ID),
+                                "${Events.CALENDAR_ID}=? AND ${Events.DIRTY}=1",
+                                arrayOf(calendarId.toString()), null)!!.use { cursor ->
+                            while (cursor.moveToNext()) {
+                                val id = cursor.getString(1) ?: cursor.getString(0)
+                                val newEvent = cursor.isNull(1) && cursor.isNull(2)
+
+                                val values = ContentValues()
+                                values.put(Events._ID, id)
+                                LocalEvent(calendar, values).writeUpdateAction(decsync)
+                                if (newEvent) {
+                                    addToNumProcessedEntries(extra, 1)
+                                }
+                            }
+                        }
+
+                        decsync.executeAllNewEntries(extra)
+                    } catch (e: Exception) {
+                        val builder = errorNotificationBuilder(context).apply {
+                            setSmallIcon(R.drawable.ic_notification)
+                            if (PrefUtils.getIntroDone(context)) {
+                                setContentTitle("DecSync")
+                                setContentText(e.message)
+                            } else {
+                                setContentTitle(context.getString(R.string.notification_saf_update_title))
+                                setContentText(context.getString(R.string.notification_saf_update_message))
+                            }
+                            setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), 0))
+                            setAutoCancel(true)
+                        }
+                        with(NotificationManagerCompat.from(context)) {
+                            notify(0, builder.build())
+                        }
+                        return false
+                    }
                 }
             }
 

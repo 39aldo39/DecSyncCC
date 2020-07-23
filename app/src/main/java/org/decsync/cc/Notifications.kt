@@ -7,6 +7,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 
 const val CHANNEL_INIT_SYNC = "initial_sync"
+const val CHANNEL_ERROR = "error"
 
 private fun createInitSyncNotificationChannel(context: Context) {
     if (Build.VERSION.SDK_INT >= 26) {
@@ -21,6 +22,19 @@ private fun createInitSyncNotificationChannel(context: Context) {
     }
 }
 
+private fun createErrorNotificationChannel(context: Context) {
+    if (Build.VERSION.SDK_INT >= 26) {
+        val name = context.getString(R.string.channel_error_name)
+        val descriptionText = context.getString(R.string.channel_error_description)
+        val importance = NotificationManager.IMPORTANCE_DEFAULT
+        val channel = NotificationChannel(CHANNEL_ERROR, name, importance).apply {
+            description = descriptionText
+        }
+        val notificationManager: NotificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
+    }
+}
+
 fun initSyncNotificationBuilder(context: Context): NotificationCompat.Builder {
     createInitSyncNotificationChannel(context)
 
@@ -28,5 +42,13 @@ fun initSyncNotificationBuilder(context: Context): NotificationCompat.Builder {
         priority = NotificationCompat.PRIORITY_LOW
         setProgress(0, 0, true)
         setOngoing(true)
+    }
+}
+
+fun errorNotificationBuilder(context: Context): NotificationCompat.Builder {
+    createErrorNotificationChannel(context)
+
+    return NotificationCompat.Builder(context, CHANNEL_ERROR).apply {
+        priority = NotificationCompat.PRIORITY_DEFAULT
     }
 }

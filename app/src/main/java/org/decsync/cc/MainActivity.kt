@@ -14,6 +14,7 @@ import android.accounts.Account
 import android.accounts.AccountManager
 import android.annotation.TargetApi
 import android.content.*
+import android.content.ContentResolver
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
@@ -51,8 +52,19 @@ import org.decsync.cc.contacts.KEY_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.library.*
 import java.util.Random
+import kotlin.math.min
 
 const val TAG = "DecSyncCC"
+
+/**
+ * Address book permission requests have a requestCode in the range [100, 199)
+ * Calendar requests in the range [200, 299)
+ * The exclusive ends are used for invalid items
+ */
+const val PERMISSIONS_ADDRESS_BOOK_START = 100
+const val PERMISSIONS_ADDRESS_BOOK_END = 199
+const val PERMISSIONS_CALENDAR_START = 200
+const val PERMISSIONS_CALENDAR_END = 299
 
 @ExperimentalStdlibApi
 class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupMenu.OnMenuItemClickListener {
@@ -63,6 +75,13 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         super.onCreate(savedInstanceState)
 
         PrefUtils.checkAppUpgrade(this)
+
+        if (!PrefUtils.getIntroDone(this)) {
+            val intent = Intent(this, IntroActivity::class.java)
+            startActivity(intent)
+            finish()
+            return
+        }
 
         setContentView(R.layout.activity_main)
 
@@ -83,24 +102,13 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         calendars_menu.setOnMenuItemClickListener(this)
 
         // Ask for permissions
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            var permissions = arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-                permissions += Manifest.permission.READ_CONTACTS
-            }
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-                permissions += Manifest.permission.WRITE_CONTACTS
-            }
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
-                permissions += Manifest.permission.READ_CALENDAR
-            }
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
-                permissions += Manifest.permission.WRITE_CALENDAR
-            }
-            ActivityCompat.requestPermissions(this, permissions, 0)
+        if (!PrefUtils.getUseSaf(this) &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 0)
         }
 
         // Ask for exception to App Standby
+        // TODO: also ask at intro
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && PrefUtils.getHintBatteryOptimizations(this)) {
             val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
             if (!powerManager.isIgnoringBatteryOptimizations(BuildConfig.APPLICATION_ID)) {
@@ -122,35 +130,41 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
     override fun onResume() {
         super.onResume()
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) return
-        try {
-            checkDecsyncInfo(PrefUtils.getDecsyncDir(this))
-        } catch (e: DecsyncException) {
+        val decsyncDir = if (!PrefUtils.getUseSaf(this) &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            null
+        } else try {
+            PrefUtils.getNativeFile(this)?.also {
+                checkDecsyncInfo(it)
+            } ?: throw Exception(getString(R.string.settings_decsync_dir_not_configured))
+        } catch (e: Exception) {
             error = true
             AlertDialog.Builder(this)
                     .setTitle("DecSync")
                     .setMessage(e.message)
                     .setPositiveButton(android.R.string.ok) { _, _ -> }
                     .show()
-            return
+            null
         }
 
-        loadBooks()
-        loadCalendars()
+        val decsyncAddressBookIds = decsyncDir?.let(::loadBooks) ?: emptyList()
+        loadBooksUnknown(decsyncAddressBookIds)
+        val decsyncCalendarIds = decsyncDir?.let(::loadCalendars) ?: emptyList()
+        loadCalendarsUnknown(decsyncCalendarIds)
     }
 
-    private fun loadBooks() {
+    private fun loadBooks(decsyncDir: NativeFile): List<String> {
         val adapter = AddressBookAdapter(this)
-        val decsyncDir = PrefUtils.getDecsyncDir(this)
 
         adapter.clear()
+        val decsyncIds = listDecsyncCollections(decsyncDir, "contacts")
         adapter.addAll(
-                listDecsyncCollections(decsyncDir, "contacts").mapNotNull {
-                    val info = Decsync.getStaticInfo(decsyncDir, "contacts", it)
+                decsyncIds.mapNotNull { id ->
+                    val info = Decsync.getStaticInfo(decsyncDir, "contacts", id)
                     val deleted = info[JsonLiteral("deleted")]?.boolean ?: false
                     if (!deleted) {
-                        val name = info[JsonLiteral("name")]?.content ?: it
-                        CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, it, name, this)
+                        val name = info[JsonLiteral("name")]?.content ?: id
+                        CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, id, name, this)
                     } else {
                         null
                     }
@@ -159,15 +173,35 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
         address_books.adapter = adapter
         address_books.onItemClickListener = onItemClickListener
+
+        return decsyncIds
     }
 
-    private fun loadCalendars() {
-        val adapter = CalendarAdapter(this)
-        val decsyncDir = PrefUtils.getDecsyncDir(this)
+    private fun loadBooksUnknown(decsyncIds: List<String>) {
+        val adapter = AddressBookUnknownAdapter(this)
 
         adapter.clear()
+        val accounts = AccountManager.get(this).getAccountsByType(getString(R.string.account_type_contacts))
         adapter.addAll(
-                listDecsyncCollections(decsyncDir, "calendars").mapNotNull {
+                accounts.filter { account ->
+                    val bookId = AccountManager.get(this).getUserData(account, "id")
+                    bookId !in decsyncIds
+                }
+        )
+
+        address_books_cardview_unknown.visibility = if (adapter.isEmpty) View.GONE else View.VISIBLE
+
+        address_books_unknown.adapter = adapter
+        address_books_unknown.onItemClickListener = onAddressBookUnknownClickListener
+    }
+
+    private fun loadCalendars(decsyncDir: NativeFile): List<String> {
+        val adapter = CalendarAdapter(this)
+
+        adapter.clear()
+        val decsyncIds = listDecsyncCollections(decsyncDir, "calendars")
+        adapter.addAll(
+                decsyncIds.mapNotNull {
                     val info = Decsync.getStaticInfo(decsyncDir, "calendars", it)
                     val deleted = info[JsonLiteral("deleted")]?.boolean ?: false
                     if (!deleted) {
@@ -181,6 +215,69 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
         calendars.adapter = adapter
         calendars.onItemClickListener = onItemClickListener
+
+        return decsyncIds
+    }
+
+    private fun loadCalendarsUnknown(decsyncIds: List<String>) {
+        val adapter = CalendarUnknownAdapter(this)
+
+        adapter.clear()
+        val calendarsAccount = Account(getString(R.string.account_name_calendars), getString(R.string.account_type_calendars))
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED) {
+            contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
+                try {
+                    provider.query(syncAdapterUri(calendarsAccount, Calendars.CONTENT_URI),
+                            arrayOf(Calendars.NAME, Calendars.CALENDAR_DISPLAY_NAME),
+                            null, null, null)!!.use { cursor ->
+                        while (cursor.moveToNext()) {
+                            val decsyncId = cursor.getString(0)
+                            val name = cursor.getString(1)
+                            if (decsyncId !in decsyncIds) {
+                                adapter.add(DecsyncIdName(decsyncId, name))
+                            }
+                        }
+                    }
+                } finally {
+                    if (Build.VERSION.SDK_INT >= 24)
+                        provider.close()
+                    else
+                        @Suppress("DEPRECATION")
+                        provider.release()
+                }
+            }
+        }
+
+
+        calendars_cardview_unknown.visibility = if (adapter.isEmpty) View.GONE else View.VISIBLE
+
+        calendars_unknown.adapter = adapter
+        calendars_unknown.onItemClickListener = onCalendarUnknownClickListener
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        when (requestCode) {
+            in PERMISSIONS_ADDRESS_BOOK_START until PERMISSIONS_ADDRESS_BOOK_END -> {
+                if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                    val position = requestCode - PERMISSIONS_ADDRESS_BOOK_START
+                    val view = address_books.getChildAt(position)
+                    val id = address_books.getItemIdAtPosition(position)
+                    address_books.performItemClick(view, position, id)
+                }
+            }
+            PERMISSIONS_ADDRESS_BOOK_END -> {} // Invalid position
+            in PERMISSIONS_CALENDAR_START until PERMISSIONS_CALENDAR_END -> {
+                if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                    val position = requestCode - PERMISSIONS_CALENDAR_START
+                    val view = calendars.getChildAt(position)
+                    val id = calendars.getItemIdAtPosition(position)
+                    calendars.performItemClick(view, position, id)
+                }
+            }
+            PERMISSIONS_CALENDAR_END -> {} // Invalid position
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -200,13 +297,15 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                 val calendarsAccount = Account(PrefUtils.getCalendarAccountName(this), getString(R.string.account_type_calendars))
                 ContentResolver.requestSync(calendarsAccount, calendarsAuthority, extras)
 
-                val contactsAuthority = ContactsContract.AUTHORITY
-                val count = address_books.adapter.count
-                for (position in 0 until count) {
-                    val info = address_books.adapter.getItem(position) as CollectionInfo
-                    if (!info.isEnabled(this)) continue
-                    val account = info.getAccount(this)
-                    ContentResolver.requestSync(account, contactsAuthority, extras)
+                if (!error) {
+                    val contactsAuthority = ContactsContract.AUTHORITY
+                    val count = address_books.adapter.count
+                    for (position in 0 until count) {
+                        val info = address_books.adapter.getItem(position) as CollectionInfo
+                        if (!info.isEnabled(this)) continue
+                        val account = info.getAccount(this)
+                        ContentResolver.requestSync(account, contactsAuthority, extras)
+                    }
                 }
 
                 // Using work manager (if enabled)
@@ -230,18 +329,9 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         if (error) return false
         when (item.itemId) {
             R.id.create_address_book -> {
-                var permissions = emptyArray<String>()
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                    permissions += Manifest.permission.WRITE_EXTERNAL_STORAGE
-                }
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-                    permissions += Manifest.permission.READ_CONTACTS
-                }
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-                    permissions += Manifest.permission.WRITE_CONTACTS
-                }
-                if (permissions.isNotEmpty()) {
-                    ActivityCompat.requestPermissions(this, permissions, 0)
+                if (!PrefUtils.getUseSaf(this) &&
+                        ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 0)
                     return false
                 }
                 val input = EditText(this)
@@ -253,27 +343,18 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             if (!name.isBlank()) {
                                 val id = "colID%05d".format(Random().nextInt(100000))
                                 val info = CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, id, name, this)
-                                val decsync = Decsync<Unit>(info.decsyncDir, info.syncType, info.collection, info.appId)
+                                val decsync = getDecsync(info)
                                 decsync.setEntry(listOf("info"), JsonLiteral("name"), JsonLiteral(name))
-                                loadBooks()
+                                loadBooks(info.decsyncDir)
                             }
                         }
                         .setNegativeButton(android.R.string.cancel) { _, _ -> }
                         .show()
             }
             R.id.create_calendar -> {
-                var permissions = emptyArray<String>()
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                    permissions += Manifest.permission.WRITE_EXTERNAL_STORAGE
-                }
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
-                    permissions += Manifest.permission.READ_CALENDAR
-                }
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
-                    permissions += Manifest.permission.WRITE_CALENDAR
-                }
-                if (permissions.isNotEmpty()) {
-                    ActivityCompat.requestPermissions(this, permissions, 0)
+                if (!PrefUtils.getUseSaf(this) &&
+                        ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 0)
                     return false
                 }
                 val input = EditText(this)
@@ -285,9 +366,9 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             if (!name.isBlank()) {
                                 val id = "colID%05d".format(Random().nextInt(100000))
                                 val info = CollectionInfo(CollectionInfo.Type.CALENDAR, id, name, this)
-                                val decsync = Decsync<Unit>(info.decsyncDir, info.syncType, info.collection, info.appId)
+                                val decsync = getDecsync(info)
                                 decsync.setEntry(listOf("info"), JsonLiteral("name"), JsonLiteral(name))
-                                loadCalendars()
+                                loadCalendars(info.decsyncDir)
                             }
                         }
                         .setNegativeButton(android.R.string.cancel) { _, _ -> }
@@ -325,7 +406,8 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                         permissions += Manifest.permission.WRITE_CONTACTS
                     }
                     if (permissions.isNotEmpty()) {
-                        ActivityCompat.requestPermissions(this, permissions, 0)
+                        val requestCode = min(PERMISSIONS_ADDRESS_BOOK_START + position, PERMISSIONS_ADDRESS_BOOK_END)
+                        ActivityCompat.requestPermissions(this, permissions, requestCode)
                         return@OnItemClickListener
                     }
                     val bundle = Bundle()
@@ -378,7 +460,8 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     permissions += Manifest.permission.WRITE_CALENDAR
                 }
                 if (permissions.isNotEmpty()) {
-                    ActivityCompat.requestPermissions(this, permissions, 0)
+                    val requestCode = min(PERMISSIONS_CALENDAR_START + position, PERMISSIONS_CALENDAR_END)
+                    ActivityCompat.requestPermissions(this, permissions, requestCode)
                     return@OnItemClickListener
                 }
                 contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
@@ -434,39 +517,53 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         adapter.notifyDataSetChanged()
     }
 
+    private val onAddressBookUnknownClickListener = AdapterView.OnItemClickListener { parent, view, position, _ ->
+        if (!view.isEnabled)
+            return@OnItemClickListener
+
+        val list = parent as ListView
+        val adapter = list.adapter as ArrayAdapter<Account>
+        val account = adapter.getItem(position)!!
+
+        if (Build.VERSION.SDK_INT >= 22) {
+            AccountManager.get(this).removeAccountExplicitly(account)
+        } else {
+            @Suppress("deprecation")
+            AccountManager.get(this).removeAccount(account, null, null)
+        }
+        adapter.remove(account)
+    }
+
+    private val onCalendarUnknownClickListener = AdapterView.OnItemClickListener { parent, view, position, _ ->
+        if (!view.isEnabled)
+            return@OnItemClickListener
+
+        val list = parent as ListView
+        val adapter = list.adapter as ArrayAdapter<DecsyncIdName>
+        val item = adapter.getItem(position)!!
+
+        val calendarsAccount = Account(getString(R.string.account_name_calendars), getString(R.string.account_type_calendars))
+        contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
+            try {
+                provider.delete(syncAdapterUri(calendarsAccount, Calendars.CONTENT_URI),
+                        "${Calendars.NAME}=?", arrayOf(item.decsyncId))
+            } finally {
+                if (Build.VERSION.SDK_INT >= 24)
+                    provider.close()
+                else
+                    @Suppress("DEPRECATION")
+                    provider.release()
+            }
+        }
+
+        adapter.remove(item)
+    }
+
     private val onActionOverflowListener = { anchor: View, info: CollectionInfo ->
         val popup = PopupMenu(this, anchor, Gravity.END)
         popup.inflate(R.menu.account_collection_operations)
 
         popup.setOnMenuItemClickListener { item ->
-            when (info.type) {
-                CollectionInfo.Type.ADDRESS_BOOK -> {
-                    var permissions = emptyArray<String>()
-                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-                        permissions += Manifest.permission.READ_CONTACTS
-                    }
-                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-                        permissions += Manifest.permission.WRITE_CONTACTS
-                    }
-                    if (permissions.isNotEmpty()) {
-                        ActivityCompat.requestPermissions(this, permissions, 0)
-                        return@setOnMenuItemClickListener true
-                    }
-                }
-                CollectionInfo.Type.CALENDAR -> {
-                    var permissions = emptyArray<String>()
-                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
-                        permissions += Manifest.permission.READ_CALENDAR
-                    }
-                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
-                        permissions += Manifest.permission.WRITE_CALENDAR
-                    }
-                    if (permissions.isNotEmpty()) {
-                        ActivityCompat.requestPermissions(this, permissions, 0)
-                        return@setOnMenuItemClickListener true
-                    }
-                }
-            }
             when (item.itemId) {
                 R.id.rename_collection -> {
                     val input = EditText(this)
@@ -493,13 +590,14 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             .show()
                 }
                 R.id.entries_count -> {
-                    var androidEntries: Int? = null
-                    var processedEntries: Int? = null
+                    var androidEntries = 0
+                    var processedEntries = 0
                     info.getProviderClient(this)?.let { provider ->
                         try {
                             when (info.type) {
                                 CollectionInfo.Type.ADDRESS_BOOK -> {
                                     processedEntries = AccountManager.get(this).getUserData(info.getAccount(this), KEY_NUM_PROCESSED_ENTRIES)?.toInt()
+                                            ?: 0
                                     provider.query(syncAdapterUri(info.getAccount(this), RawContacts.CONTENT_URI),
                                             emptyArray(), "${RawContacts.DELETED}=0",
                                             null, null)!!.use { cursor ->
@@ -511,7 +609,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                             arrayOf(Calendars._ID, COLUMN_NUM_PROCESSED_ENTRIES), "${Calendars.NAME}=?",
                                             arrayOf(info.id), null)!!.use { calCursor ->
                                         if (calCursor.moveToFirst()) {
-                                            processedEntries = if (calCursor.isNull(1)) null else calCursor.getInt(1)
+                                            processedEntries = if (calCursor.isNull(1)) 0 else calCursor.getInt(1)
                                             calCursor.getLong(0)
                                         } else {
                                             null
@@ -530,41 +628,6 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             else
                                 @Suppress("DEPRECATION")
                                 provider.release()
-                        }
-
-                        class DecsyncEntriesTask(
-                                val mContext: Context,
-                                val mDialog: AlertDialog,
-                                val mAndroidEntries: Int?,
-                                val mProcessedEntries: Int?,
-                                val mInfo: CollectionInfo
-                        ) : AsyncTask<Void, Void, Int>() {
-                            override fun onPreExecute() {
-                                super.onPreExecute()
-                                val message = mContext.getString(R.string.entries_count_message, mAndroidEntries, mProcessedEntries, "…")
-                                mDialog.setMessage(message)
-                                mDialog.show()
-                            }
-
-                            override fun doInBackground(vararg params: Void): Int {
-                                class Extra(var count: Int)
-                                val latestAppId = getDecsync(mInfo).latestAppId()
-                                val countDecsync = Decsync<Extra>(mInfo.decsyncDir, mInfo.syncType, mInfo.collection, latestAppId)
-                                countDecsync.addListener(emptyList()) { _, entry, extra ->
-                                    if (!entry.value.isNull) {
-                                        extra.count++
-                                    }
-                                }
-                                val extra = Extra(0)
-                                countDecsync.executeStoredEntriesForPathPrefix(listOf("resources"), extra)
-                                return extra.count
-                            }
-
-                            override fun onPostExecute(decsyncEntries: Int) {
-                                super.onPostExecute(decsyncEntries)
-                                val message = mContext.getString(R.string.entries_count_message, mAndroidEntries, mProcessedEntries, "%d".format(decsyncEntries))
-                                mDialog.setMessage(message)
-                            }
                         }
 
                         val dialog = AlertDialog.Builder(this)
@@ -587,20 +650,15 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
     private fun setCollectionInfo(info: CollectionInfo, key: JsonElement, value: JsonElement) {
         Log.d(TAG, "Set info for ${info.id} of key $key to value $value")
+        getDecsync(info).setEntry(listOf("info"), key, value)
         info.getProviderClient(this)?.let { provider ->
             try {
                 val extra = Extra(info, this, provider)
                 when (info.type) {
-                    CollectionInfo.Type.ADDRESS_BOOK -> {
+                    CollectionInfo.Type.ADDRESS_BOOK ->
                         ContactDecsyncUtils.infoListener(emptyList(), Decsync.Entry(key, value), extra)
-                        getDecsync(info).setEntry(listOf("info"), key, value)
-                        loadBooks()
-                    }
-                    CollectionInfo.Type.CALENDAR -> {
+                    CollectionInfo.Type.CALENDAR ->
                         CalendarDecsyncUtils.infoListener(emptyList(), Decsync.Entry(key, value), extra)
-                        getDecsync(info).setEntry(listOf("info"), key, value)
-                        loadCalendars()
-                    }
                 }
             } finally {
                 if (Build.VERSION.SDK_INT >= 24)
@@ -609,6 +667,10 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     @Suppress("DEPRECATION")
                     provider.release()
             }
+        }
+        when (info.type) {
+            CollectionInfo.Type.ADDRESS_BOOK -> loadBooks(info.decsyncDir)
+            CollectionInfo.Type.CALENDAR -> loadCalendars(info.decsyncDir)
         }
     }
 
@@ -623,10 +685,10 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
             val info = getItem(position)!!
             val isChecked = info.isEnabled(context)
 
-            val checked: CheckBox = v.findViewById(R.id.checked)
+            val checked = v.findViewById<CheckBox>(R.id.checked)
             checked.isChecked = isChecked
 
-            val tv: TextView = v.findViewById(R.id.title)
+            val tv = v.findViewById<TextView>(R.id.title)
             tv.text = info.name
 
             v.findViewById<ImageView>(R.id.action_overflow).setOnClickListener { view ->
@@ -634,6 +696,23 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     it.onActionOverflowListener(view, info)
                 }
             }
+
+            return v
+        }
+    }
+
+    class AddressBookUnknownAdapter(
+            context: Context
+    ): ArrayAdapter<Account>(context, R.layout.account_item_unknown) {
+        override fun getView(position: Int, v: View?, parent: ViewGroup): View {
+            val v = v ?: LayoutInflater.from(context).inflate(R.layout.account_item_unknown, parent, false)
+            val account = getItem(position)!!
+
+            val checked = v.findViewById<CheckBox>(R.id.checked)
+            checked.isChecked = true
+
+            val tv = v.findViewById<TextView>(R.id.title)
+            tv.text = account.name
 
             return v
         }
@@ -670,6 +749,60 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
             }
 
             return v
+        }
+    }
+
+    class DecsyncIdName(val decsyncId: String, val name: String)
+    class CalendarUnknownAdapter(
+            context: Context
+    ): ArrayAdapter<DecsyncIdName>(context, R.layout.account_item_unknown) {
+        override fun getView(position: Int, v: View?, parent: ViewGroup): View {
+            val v = v ?: LayoutInflater.from(context).inflate(R.layout.account_item_unknown, parent, false)
+            val item = getItem(position)!!
+
+            val checked = v.findViewById<CheckBox>(R.id.checked)
+            checked.isChecked = true
+
+            val tv = v.findViewById<TextView>(R.id.title)
+            tv.text = item.name
+
+            return v
+        }
+    }
+
+    class DecsyncEntriesTask(
+            val mContext: Context,
+            val mDialog: AlertDialog,
+            val mAndroidEntries: Int?,
+            val mProcessedEntries: Int?,
+            val mInfo: CollectionInfo
+    ) : AsyncTask<Void, Void, Int>() {
+        override fun onPreExecute() {
+            super.onPreExecute()
+            val message = mContext.getString(R.string.entries_count_message, mAndroidEntries, mProcessedEntries, "…")
+            mDialog.setMessage(message)
+            mDialog.show()
+        }
+
+        override fun doInBackground(vararg params: Void): Int {
+            class Count(var count: Int)
+
+            val latestAppId = getDecsync(mInfo).latestAppId()
+            val countDecsync = Decsync<Count>(mInfo.decsyncDir, mInfo.syncType, mInfo.collection, latestAppId)
+            countDecsync.addListener(emptyList()) { _, entry, count ->
+                if (!entry.value.isNull) {
+                    count.count++
+                }
+            }
+            val count = Count(0)
+            countDecsync.executeStoredEntriesForPathPrefix(listOf("resources"), count)
+            return count.count
+        }
+
+        override fun onPostExecute(decsyncEntries: Int) {
+            super.onPostExecute(decsyncEntries)
+            val message = mContext.getString(R.string.entries_count_message, mAndroidEntries, mProcessedEntries, "%d".format(decsyncEntries))
+            mDialog.setMessage(message)
         }
     }
 }

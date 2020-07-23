@@ -19,6 +19,7 @@
 package org.decsync.cc
 
 import android.content.Context
+import android.os.Build
 import android.os.Environment
 import android.preference.PreferenceManager
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -26,15 +27,17 @@ import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import org.decsync.cc.calendars.CalendarsWorker
 import org.decsync.cc.contacts.ContactsWorker
-import org.decsync.library.getAppId
+import org.decsync.library.*
 import java.io.File
 import java.util.*
 import java.util.concurrent.TimeUnit
 
 object PrefUtils {
+    const val DECSYNC_USE_SAF = "decsync.use_saf"
+    const val DECSYNC_FILE = "decsync.directory"
+    const val DECSYNC_FILE_RESET = "decsync.directory_reset"
     const val APP_VERSION = "app.version"
-    const val DECSYNC_DIRECTORY = "decsync.directory"
-    const val DECSYNC_DIRECTORY_RESET = "decsync.directory_reset"
+    const val INTRO_DONE = "intro.done"
     const val OWN_APP_ID = "own_app_id"
     const val HINT_BATTERY_OPTIMIZATIONS = "hint.battery_optimizations"
     const val OFFLINE_SYNC = "offline_sync"
@@ -42,8 +45,8 @@ object PrefUtils {
     const val OFFLINE_SYNC_CONTACTS = "offline_sync.contacts"
     const val CALENDAR_ACCOUNT_NAME = "calendar_account_name"
 
-    val currentAppVersion = 2
-    val defaultDecsyncDir = File("${Environment.getExternalStorageDirectory()}/DecSync")
+    val currentAppVersion = 3
+    val defaultDecsyncDir = "${Environment.getExternalStorageDirectory()}/DecSync"
 
     fun getAppVersion(context: Context): Int {
         val settings = PreferenceManager.getDefaultSharedPreferences(context)
@@ -56,14 +59,36 @@ object PrefUtils {
         editor.apply()
     }
 
-    fun getDecsyncDir(context: Context): File {
-        val settings = PreferenceManager.getDefaultSharedPreferences(context)
-        return File(settings.getString(DECSYNC_DIRECTORY, defaultDecsyncDir.path)!!)
+    @ExperimentalStdlibApi
+    fun getNativeFile(context: Context): NativeFile? {
+        return if (getUseSaf(context)) {
+            val decsyncDir = DecsyncPrefUtils.getDecsyncDir(context) ?: return null
+            checkUriPermissions(context, decsyncDir)
+            nativeFileFromDirUri(context, decsyncDir)
+        } else {
+            nativeFileFromFile(getDecsyncFile(context))
+        }
     }
 
-    fun putDecsyncDir(context: Context, value: File) {
+    fun getUseSaf(context: Context): Boolean {
+        val settings = PreferenceManager.getDefaultSharedPreferences(context)
+        return settings.getBoolean(DECSYNC_USE_SAF, false)
+    }
+
+    fun putUseSaf(context: Context, value: Boolean) {
         val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
-        editor.putString(DECSYNC_DIRECTORY, value.path)
+        editor.putBoolean(DECSYNC_USE_SAF, value)
+        editor.apply()
+    }
+
+    fun getDecsyncFile(context: Context): File {
+        val settings = PreferenceManager.getDefaultSharedPreferences(context)
+        return File(settings.getString(DECSYNC_FILE, defaultDecsyncDir)!!)
+    }
+
+    fun putDecsyncFile(context: Context, value: File) {
+        val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
+        editor.putString(DECSYNC_FILE, value.path)
         editor.apply()
     }
 
@@ -80,6 +105,17 @@ object PrefUtils {
     fun putOwnAppId(context: Context, value: String) {
         val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
         editor.putString(OWN_APP_ID, value)
+        editor.apply()
+    }
+
+    fun getIntroDone(context: Context): Boolean {
+        val settings = PreferenceManager.getDefaultSharedPreferences(context)
+        return settings.getBoolean(INTRO_DONE, false)
+    }
+
+    fun putIntroDone(context: Context, value: Boolean) {
+        val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
+        editor.putBoolean(INTRO_DONE, value)
         editor.apply()
     }
 
@@ -138,8 +174,18 @@ object PrefUtils {
                     putOwnAppId(context, getAppId("DecSyncCC"))
                     putCalendarAccountName(context, "DecSync Calendars")
                 }
+                if (appVersion < 3) {
+                    putIntroDone(context, true)
+                }
             }
             putAppVersion(context, currentAppVersion)
+        }
+
+        if (Build.VERSION.SDK_INT >= 29 &&
+                !getUseSaf(context) &&
+                !Environment.isExternalStorageLegacy()) {
+            putUseSaf(context, true)
+            putIntroDone(context, false)
         }
     }
 }

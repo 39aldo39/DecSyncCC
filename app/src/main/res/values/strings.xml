@@ -10,6 +10,7 @@
     <string name="app_name" translatable="false">DecSync CC</string>
     <string name="title_activity_main" translatable="false">DecSync CC</string>
     <string name="title_activity_settings">Settings</string>
+    <string name="title_activity_intro">Introduction</string>
 
     <string name="account_name_contacts">DecSync Contacts</string>
     <string name="account_name_calendars">DecSync Calendars</string>
@@ -18,9 +19,11 @@
 
     <!-- MainActivity -->
     <string name="account_contacts">Address books</string>
+    <string name="account_contacts_unknown">Address books (unknown)</string>
     <string name="account_calendars">Calendars</string>
     <string name="account_synchronize_now">Synchronize now</string>
     <string name="account_synchronizing_now">Synchronizing now</string>
+    <string name="account_calendars_unknown">Calendars (unknown)</string>
     <string name="account_synchronize_this_collection">synchronize this collection</string>
     <string name="account_refresh_address_book_list">Refresh address book list</string>
     <string name="account_create_new_address_book">Create new address book</string>
@@ -40,6 +43,16 @@
     <!-- Notifications -->
     <string name="notification_adding_contacts">Adding contacts of %s</string>
     <string name="notification_adding_events">Adding events of %s</string>
+    <string name="notification_saf_update_title">New Android version</string>
+    <string name="notification_saf_update_message">The DecSync directory needs to be reselected</string>
+
+    <!-- IntroActivity -->
+    <string name="intro_welcome_title">Welcome to DecSync CC</string>
+    <string name="intro_welcome_desc">DecSync CC synchronizes contacts and calendars using DecSync</string>
+    <string name="intro_directory_title">DecSync Directory</string>
+    <string name="intro_directory_desc">To start synchronizing, all you have to do is synchronize the DecSync directory</string>
+    <string name="intro_directory_button">Choose directory</string>
+    <string name="intro_directory_select">Please select a DecSync directory</string>
 
     <!-- Startup dialogs -->
     <string name="startup_battery_optimization">Scheduled synchronization</string>
@@ -51,12 +64,14 @@
     <!-- GeneralPrefsActivity -->
     <string name="settings_about">About DecSync CC</string>
     <string name="settings_category_decsync">DecSync</string>
-    <string name="settings_decsync_directory">DecSync directory</string>
-    <string name="settings_decsync_directory_reset">Reset DecSync directory</string>
-    <string name="settings_decsync_directory_reset_title">Reset DecSync directory</string>
-    <string name="settings_decsync_directory_reset_message">Do you want to reset the DecSync directory to the default location \'%s\'?</string>
+    <string name="settings_decsync_directory">Select DecSync directory</string>
+    <string name="settings_decsync_file">DecSync directory</string>
+    <string name="settings_decsync_file_reset">Reset DecSync directory</string>
+    <string name="settings_decsync_file_reset_title">Reset DecSync directory</string>
+    <string name="settings_decsync_file_reset_message">Do you want to reset the DecSync directory to the default location \'%s\'?</string>
     <string name="settings_decsync_collections_enabled_title">Enabled collections</string>
     <string name="settings_decsync_collections_enabled_message">There are still some collections enabled. Disable all collections before changing the DecSync directory.</string>
+    <string name="settings_decsync_dir_not_configured">No DecSync directory configured</string>
     <string name="settings_category_sync">Synchronization</string>
     <string name="settings_offline_sync">Synchronize offline</string>
     <string name="settings_offline_sync_description">Synchronize the collections even when the device is offline</string>
@@ -64,4 +79,6 @@
     <!-- Notification channel -->
     <string name="channel_init_sync_name">Initial sync</string>
     <string name="channel_init_sync_description">Notification shown during the initial sync</string>
+    <string name="channel_error_name">Errors</string>
+    <string name="channel_error_description">Notification shown during an error</string>
 </resources>

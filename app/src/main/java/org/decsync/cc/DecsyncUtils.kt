@@ -23,12 +23,20 @@ import android.content.ContentProviderClient
 import android.content.ContentValues
 import android.content.Context
 import android.provider.CalendarContract
+import kotlinx.serialization.json.JsonElement
 import org.decsync.cc.calendars.COLUMN_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.calendars.CalendarDecsyncUtils
 import org.decsync.cc.contacts.ContactDecsyncUtils
 import org.decsync.cc.contacts.KEY_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.contacts.syncAdapterUri
-import org.decsync.library.Decsync
+import org.decsync.library.*
+
+@ExperimentalStdlibApi
+class Extra(
+        val info: CollectionInfo,
+        val context: Context,
+        val provider: ContentProviderClient
+)
 
 @ExperimentalStdlibApi
 fun getDecsync(info: CollectionInfo): Decsync<Extra> {
@@ -46,12 +54,7 @@ fun getDecsync(info: CollectionInfo): Decsync<Extra> {
     return decsync
 }
 
-class Extra(
-        val info: CollectionInfo,
-        val context: Context,
-        val provider: ContentProviderClient
-)
-
+@ExperimentalStdlibApi
 fun addToNumProcessedEntries(extra: Extra, add: Int) {
     when (extra.info.type) {
         CollectionInfo.Type.ADDRESS_BOOK -> addToNumProcessedEntriesContacts(extra, add)
@@ -59,6 +62,7 @@ fun addToNumProcessedEntries(extra: Extra, add: Int) {
     }
 }
 
+@ExperimentalStdlibApi
 private fun addToNumProcessedEntriesContacts(extra: Extra, add: Int) {
     val accountManager = AccountManager.get(extra.context)
     val account = extra.info.getAccount(extra.context)
@@ -66,6 +70,7 @@ private fun addToNumProcessedEntriesContacts(extra: Extra, add: Int) {
     accountManager.setUserData(account, KEY_NUM_PROCESSED_ENTRIES, (count + add).toString())
 }
 
+@ExperimentalStdlibApi
 private fun addToNumProcessedEntriesCalendar(extra: Extra, add: Int) {
     val account = extra.info.getAccount(extra.context)
     val count = extra.provider.query(syncAdapterUri(account, CalendarContract.Calendars.CONTENT_URI),
@@ -79,6 +84,7 @@ private fun addToNumProcessedEntriesCalendar(extra: Extra, add: Int) {
             values, "${CalendarContract.Calendars.NAME}=?", arrayOf(extra.info.id))
 }
 
+@ExperimentalStdlibApi
 fun setNumProcessedEntries(extra: Extra, count: Int) {
     when (extra.info.type) {
         CollectionInfo.Type.ADDRESS_BOOK -> setNumProcessedEntriesContacts(extra, count)
@@ -86,12 +92,14 @@ fun setNumProcessedEntries(extra: Extra, count: Int) {
     }
 }
 
+@ExperimentalStdlibApi
 private fun setNumProcessedEntriesContacts(extra: Extra, count: Int) {
     val accountManager = AccountManager.get(extra.context)
     val account = extra.info.getAccount(extra.context)
     accountManager.setUserData(account, KEY_NUM_PROCESSED_ENTRIES, count.toString())
 }
 
+@ExperimentalStdlibApi
 private fun setNumProcessedEntriesCalendar(extra: Extra, count: Int) {
     val account = extra.info.getAccount(extra.context)
     val values = ContentValues()
