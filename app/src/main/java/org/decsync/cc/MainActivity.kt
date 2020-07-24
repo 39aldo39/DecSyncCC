@@ -82,6 +82,12 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
             finish()
             return
         }
+        if (PrefUtils.getUpdateForcesSaf(this)) {
+            val intent = Intent(this, SafUpdateActivity::class.java)
+            startActivity(intent)
+            finish()
+            return
+        }
 
         setContentView(R.layout.activity_main)
 

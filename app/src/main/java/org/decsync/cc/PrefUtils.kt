@@ -38,6 +38,7 @@ object PrefUtils {
     const val DECSYNC_FILE_RESET = "decsync.directory_reset"
     const val APP_VERSION = "app.version"
     const val INTRO_DONE = "intro.done"
+    const val UPDATE_FORCES_SAF = "update_forces_saf"
     const val OWN_APP_ID = "own_app_id"
     const val HINT_BATTERY_OPTIMIZATIONS = "hint.battery_optimizations"
     const val OFFLINE_SYNC = "offline_sync"
@@ -119,6 +120,17 @@ object PrefUtils {
         editor.apply()
     }
 
+    fun getUpdateForcesSaf(context: Context): Boolean {
+        val settings = PreferenceManager.getDefaultSharedPreferences(context)
+        return settings.getBoolean(UPDATE_FORCES_SAF, false)
+    }
+
+    fun putUpdateForcesSaf(context: Context, value: Boolean) {
+        val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
+        editor.putBoolean(UPDATE_FORCES_SAF, value)
+        editor.apply()
+    }
+
     fun getHintBatteryOptimizations(context: Context): Boolean {
         val settings = PreferenceManager.getDefaultSharedPreferences(context)
         return settings.getBoolean(HINT_BATTERY_OPTIMIZATIONS, true)
@@ -185,7 +197,9 @@ object PrefUtils {
                 !getUseSaf(context) &&
                 !Environment.isExternalStorageLegacy()) {
             putUseSaf(context, true)
-            putIntroDone(context, false)
+            if (getIntroDone(context)) {
+                putUpdateForcesSaf(context, true)
+            }
         }
     }
 }

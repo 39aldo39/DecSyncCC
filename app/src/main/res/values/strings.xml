@@ -11,6 +11,7 @@
     <string name="title_activity_main" translatable="false">DecSync CC</string>
     <string name="title_activity_settings">Settings</string>
     <string name="title_activity_intro">Introduction</string>
+    <string name="title_activity_saf_update">Android update</string>
 
     <string name="account_name_contacts">DecSync Contacts</string>
     <string name="account_name_calendars">DecSync Calendars</string>
@@ -53,6 +54,9 @@
     <string name="intro_directory_desc">To start synchronizing, all you have to do is synchronize the DecSync directory</string>
     <string name="intro_directory_button">Choose directory</string>
     <string name="intro_directory_select">Please select a DecSync directory</string>
+
+    <!-- SafUpdateActivity -->
+    <string name="saf_update_desc">Due to an Android update you need to reselect the DecSync directory</string>
 
     <!-- Startup dialogs -->
     <string name="startup_battery_optimization">Scheduled synchronization</string>

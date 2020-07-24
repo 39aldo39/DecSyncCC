@@ -125,12 +125,12 @@ class ContactsService : Service() {
             } catch (e: Exception) {
                 val builder = errorNotificationBuilder(context).apply {
                     setSmallIcon(R.drawable.ic_notification)
-                    if (PrefUtils.getIntroDone(context)) {
-                        setContentTitle("DecSync")
-                        setContentText(e.message)
-                    } else {
+                    if (PrefUtils.getUpdateForcesSaf(context)) {
                         setContentTitle(context.getString(R.string.notification_saf_update_title))
                         setContentText(context.getString(R.string.notification_saf_update_message))
+                    } else {
+                        setContentTitle("DecSync")
+                        setContentText(e.message)
                     }
                     setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), 0))
                     setAutoCancel(true)
