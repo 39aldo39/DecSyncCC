@@ -620,12 +620,13 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                     dialog.dismiss()
                                 }
                                 .create()
-                        dialog.show()
-                        GlobalScope.launch {
+                        val countJob = GlobalScope.launch {
                             class Count(var count: Int)
+
                             val latestAppId = getDecsync(info).latestAppId()
                             val countDecsync = Decsync<Count>(info.decsyncDir, info.syncType, info.collection, latestAppId)
                             countDecsync.addListener(emptyList()) { _, entry, count ->
+                                if (!isActive) throw CancellationException()
                                 if (!entry.value.isNull) {
                                     count.count++
                                 }
@@ -634,6 +635,10 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             countDecsync.executeStoredEntriesForPathPrefix(listOf("resources"), count)
                             dialog.setMessage(getString(R.string.entries_count_message, androidEntries, processedEntries, "%d".format(count.count)))
                         }
+                        dialog.setOnDismissListener {
+                            countJob.cancel()
+                        }
+                        dialog.show()
                     }
                 }
             }
