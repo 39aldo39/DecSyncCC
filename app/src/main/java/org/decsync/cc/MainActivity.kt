@@ -18,7 +18,6 @@ import android.content.ContentResolver
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
-import android.os.AsyncTask
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
@@ -29,7 +28,6 @@ import android.provider.ContactsContract
 import android.provider.ContactsContract.RawContacts
 import android.provider.Settings
 import androidx.core.app.ActivityCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -43,6 +41,7 @@ import androidx.work.WorkManager
 import at.bitfire.ical4android.AndroidCalendar
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.coroutines.*
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonLiteral
 import kotlinx.serialization.json.boolean
@@ -616,11 +615,25 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
                         val dialog = AlertDialog.Builder(this)
                                 .setTitle(R.string.entries_count_title)
+                                .setMessage(getString(R.string.entries_count_message, androidEntries, processedEntries, "…"))
                                 .setNeutralButton(android.R.string.ok) { dialog, _ ->
                                     dialog.dismiss()
                                 }
                                 .create()
-                        DecsyncEntriesTask(this, dialog, androidEntries, processedEntries, info).execute()
+                        dialog.show()
+                        GlobalScope.launch {
+                            class Count(var count: Int)
+                            val latestAppId = getDecsync(info).latestAppId()
+                            val countDecsync = Decsync<Count>(info.decsyncDir, info.syncType, info.collection, latestAppId)
+                            countDecsync.addListener(emptyList()) { _, entry, count ->
+                                if (!entry.value.isNull) {
+                                    count.count++
+                                }
+                            }
+                            val count = Count(0)
+                            countDecsync.executeStoredEntriesForPathPrefix(listOf("resources"), count)
+                            dialog.setMessage(getString(R.string.entries_count_message, androidEntries, processedEntries, "%d".format(count.count)))
+                        }
                     }
                 }
             }
@@ -751,42 +764,6 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
             tv.text = item.name
 
             return v
-        }
-    }
-
-    class DecsyncEntriesTask(
-            val mContext: Context,
-            val mDialog: AlertDialog,
-            val mAndroidEntries: Int?,
-            val mProcessedEntries: Int?,
-            val mInfo: CollectionInfo
-    ) : AsyncTask<Void, Void, Int>() {
-        override fun onPreExecute() {
-            super.onPreExecute()
-            val message = mContext.getString(R.string.entries_count_message, mAndroidEntries, mProcessedEntries, "…")
-            mDialog.setMessage(message)
-            mDialog.show()
-        }
-
-        override fun doInBackground(vararg params: Void): Int {
-            class Count(var count: Int)
-
-            val latestAppId = getDecsync(mInfo).latestAppId()
-            val countDecsync = Decsync<Count>(mInfo.decsyncDir, mInfo.syncType, mInfo.collection, latestAppId)
-            countDecsync.addListener(emptyList()) { _, entry, count ->
-                if (!entry.value.isNull) {
-                    count.count++
-                }
-            }
-            val count = Count(0)
-            countDecsync.executeStoredEntriesForPathPrefix(listOf("resources"), count)
-            return count.count
-        }
-
-        override fun onPostExecute(decsyncEntries: Int) {
-            super.onPostExecute(decsyncEntries)
-            val message = mContext.getString(R.string.entries_count_message, mAndroidEntries, mProcessedEntries, "%d".format(decsyncEntries))
-            mDialog.setMessage(message)
         }
     }
 }
