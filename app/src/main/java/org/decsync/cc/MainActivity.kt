@@ -37,6 +37,9 @@ import androidx.appcompat.widget.Toolbar
 import android.util.Log
 import android.view.*
 import android.widget.*
+import androidx.work.Data
+import androidx.work.OneTimeWorkRequest
+import androidx.work.WorkManager
 import at.bitfire.ical4android.AndroidCalendar
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
@@ -47,7 +50,9 @@ import kotlinx.serialization.json.content
 import org.decsync.cc.calendars.COLUMN_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.calendars.CalendarDecsyncUtils
 import org.decsync.cc.calendars.CalendarDecsyncUtils.addColor
+import org.decsync.cc.calendars.CalendarsInitWorker
 import org.decsync.cc.contacts.ContactDecsyncUtils
+import org.decsync.cc.contacts.ContactsInitWorker
 import org.decsync.cc.contacts.KEY_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.library.*
@@ -421,33 +426,14 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     AccountManager.get(this).addAccountExplicitly(account, null, bundle)
                     ContentResolver.setSyncAutomatically(account, ContactsContract.AUTHORITY, true)
                     ContentResolver.addPeriodicSync(account, ContactsContract.AUTHORITY, Bundle(), 60 * 60)
-                    AsyncTask.execute {
-                        val builder = initSyncNotificationBuilder(this).apply {
-                            setSmallIcon(R.drawable.ic_notification)
-                            setContentTitle(getString(R.string.notification_adding_contacts, info.name))
-                        }
-                        with(NotificationManagerCompat.from(this)) {
-                            notify(info.notificationId, builder.build())
-                        }
-                        contentResolver.acquireContentProviderClient(ContactsContract.AUTHORITY)?.let { provider ->
-                            try {
-                                val decsync = getDecsync(info)
-                                val extra = Extra(info, this, provider)
-                                setNumProcessedEntries(extra, 0)
-                                decsync.initStoredEntries()
-                                decsync.executeStoredEntriesForPathPrefix(listOf("resources"), extra)
-                            } finally {
-                                if (Build.VERSION.SDK_INT >= 24)
-                                    provider.close()
-                                else
-                                    @Suppress("DEPRECATION")
-                                    provider.release()
-                            }
-                        }
-                        with(NotificationManagerCompat.from(this)) {
-                            cancel(info.notificationId)
-                        }
-                    }
+                    val inputData = Data.Builder()
+                            .putString(InitWorker.KEY_ID, info.id)
+                            .putString(InitWorker.KEY_NAME, info.name)
+                            .build()
+                    val workRequest = OneTimeWorkRequest.Builder(ContactsInitWorker::class.java)
+                            .setInputData(inputData)
+                            .build()
+                    WorkManager.getInstance(this).enqueue(workRequest)
                 } else {
                     if (Build.VERSION.SDK_INT >= 22) {
                         AccountManager.get(this).removeAccountExplicitly(account)
@@ -488,24 +474,16 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                 addColor(values, color)
                             }
                             provider.insert(syncAdapterUri(account, Calendars.CONTENT_URI), values)
-                            AsyncTask.execute {
-                                val builder = initSyncNotificationBuilder(this).apply {
-                                    setSmallIcon(R.drawable.ic_notification)
-                                    setContentTitle(getString(R.string.notification_adding_events, info.name))
-                                }
-                                with(NotificationManagerCompat.from(this)) {
-                                    notify(info.notificationId, builder.build())
-                                }
-                                AndroidCalendar.insertColors(provider, account) // Allow custom event colors
-                                val decsync = getDecsync(info)
-                                val extra = Extra(info, this, provider)
-                                setNumProcessedEntries(extra, 0)
-                                decsync.initStoredEntries()
-                                decsync.executeStoredEntriesForPathPrefix(listOf("resources"), extra)
-                                with(NotificationManagerCompat.from(this)) {
-                                    cancel(info.notificationId)
-                                }
-                            }
+                            AndroidCalendar.insertColors(provider, account) // Allow custom event colors
+
+                            val inputData = Data.Builder()
+                                    .putString(InitWorker.KEY_ID, info.id)
+                                    .putString(InitWorker.KEY_NAME, info.name)
+                                    .build()
+                            val workRequest = OneTimeWorkRequest.Builder(CalendarsInitWorker::class.java)
+                                    .setInputData(inputData)
+                                    .build()
+                            WorkManager.getInstance(this).enqueue(workRequest)
                         } else {
                             provider.delete(syncAdapterUri(account, Calendars.CONTENT_URI),
                                     "${Calendars.NAME}=?", arrayOf(info.id))
