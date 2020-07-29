@@ -229,7 +229,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         val adapter = CalendarUnknownAdapter(this)
 
         adapter.clear()
-        val calendarsAccount = Account(getString(R.string.account_name_calendars), getString(R.string.account_type_calendars))
+        val calendarsAccount = Account(PrefUtils.getCalendarAccountName(this), getString(R.string.account_type_calendars))
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED) {
             contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
                 try {
@@ -548,7 +548,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         val adapter = list.adapter as ArrayAdapter<DecsyncIdName>
         val item = adapter.getItem(position)!!
 
-        val calendarsAccount = Account(getString(R.string.account_name_calendars), getString(R.string.account_type_calendars))
+        val calendarsAccount = Account(PrefUtils.getCalendarAccountName(this), getString(R.string.account_type_calendars))
         contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
             try {
                 provider.delete(syncAdapterUri(calendarsAccount, Calendars.CONTENT_URI),
