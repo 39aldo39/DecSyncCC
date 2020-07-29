@@ -36,6 +36,7 @@ import android.util.Log
 import android.view.*
 import android.widget.*
 import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
 import at.bitfire.ical4android.AndroidCalendar
@@ -439,8 +440,9 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     val workRequest = OneTimeWorkRequest.Builder(ContactsInitWorker::class.java)
                             .setInputData(inputData)
                             .build()
-                    WorkManager.getInstance(this).enqueue(workRequest)
+                    WorkManager.getInstance(this).enqueueUniqueWork("${info.type}-${info.id}", ExistingWorkPolicy.REPLACE, workRequest)
                 } else {
+                    WorkManager.getInstance(this).cancelUniqueWork("${info.type}-${info.id}")
                     if (Build.VERSION.SDK_INT >= 22) {
                         AccountManager.get(this).removeAccountExplicitly(account)
                     } else {
@@ -489,8 +491,9 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             val workRequest = OneTimeWorkRequest.Builder(CalendarsInitWorker::class.java)
                                     .setInputData(inputData)
                                     .build()
-                            WorkManager.getInstance(this).enqueue(workRequest)
+                            WorkManager.getInstance(this).enqueueUniqueWork("${info.type}-${info.id}", ExistingWorkPolicy.REPLACE, workRequest)
                         } else {
+                            WorkManager.getInstance(this).cancelUniqueWork("${info.type}-${info.id}")
                             provider.delete(syncAdapterUri(account, Calendars.CONTENT_URI),
                                     "${Calendars.NAME}=?", arrayOf(info.id))
                         }
