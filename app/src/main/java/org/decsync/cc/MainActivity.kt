@@ -136,6 +136,19 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                         .show()
             }
         }
+
+        // Adapters
+        address_books.adapter = AddressBookAdapter(this)
+        address_books.onItemClickListener = onItemClickListener
+
+        address_books_unknown.adapter = AddressBookUnknownAdapter(this)
+        address_books_unknown.onItemClickListener = onAddressBookUnknownClickListener
+
+        calendars.adapter = CalendarAdapter(this)
+        calendars.onItemClickListener = onItemClickListener
+
+        calendars_unknown.adapter = CalendarUnknownAdapter(this)
+        calendars_unknown.onItemClickListener = onCalendarUnknownClickListener
     }
 
     override fun onResume() {
@@ -157,83 +170,76 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
             null
         }
 
-        val decsyncAddressBookIds = decsyncDir?.let(::loadBooks) ?: emptyList()
-        loadBooksUnknown(decsyncAddressBookIds)
-        val decsyncCalendarIds = decsyncDir?.let(::loadCalendars) ?: emptyList()
-        loadCalendarsUnknown(decsyncCalendarIds)
+        GlobalScope.launch {
+            val decsyncAddressBookIds = decsyncDir?.let(::loadBooks) ?: emptyList()
+            loadBooksUnknown(decsyncAddressBookIds)
+            val decsyncCalendarIds = decsyncDir?.let(::loadCalendars) ?: emptyList()
+            loadCalendarsUnknown(decsyncCalendarIds)
+        }
     }
 
     private fun loadBooks(decsyncDir: NativeFile): List<String> {
-        val adapter = AddressBookAdapter(this)
-
-        adapter.clear()
         val decsyncIds = listDecsyncCollections(decsyncDir, "contacts")
-        adapter.addAll(
-                decsyncIds.mapNotNull { id ->
-                    val info = Decsync.getStaticInfo(decsyncDir, "contacts", id)
-                    val deleted = info[JsonLiteral("deleted")]?.boolean ?: false
-                    if (!deleted) {
-                        val name = info[JsonLiteral("name")]?.content ?: id
-                        CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, id, name, this)
-                    } else {
-                        null
-                    }
-                }
-        )
+        val collectionInfos = decsyncIds.mapNotNull { id ->
+            val info = Decsync.getStaticInfo(decsyncDir, "contacts", id)
+            val deleted = info[JsonLiteral("deleted")]?.boolean ?: false
+            if (!deleted) {
+                val name = info[JsonLiteral("name")]?.content ?: id
+                CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, id, name, this)
+            } else {
+                null
+            }
+        }
 
-        address_books.adapter = adapter
-        address_books.onItemClickListener = onItemClickListener
+        CoroutineScope(Dispatchers.Main).launch {
+            val adapter = address_books.adapter as AddressBookAdapter
+            adapter.clear()
+            adapter.addAll(collectionInfos)
+        }
 
         return decsyncIds
     }
 
     private fun loadBooksUnknown(decsyncIds: List<String>) {
-        val adapter = AddressBookUnknownAdapter(this)
+        val accountManager = AccountManager.get(this)
+        val accounts = accountManager.getAccountsByType(getString(R.string.account_type_contacts)).filter { account ->
+            val bookId = accountManager.getUserData(account, "id")
+            bookId !in decsyncIds
+        }
 
-        adapter.clear()
-        val accounts = AccountManager.get(this).getAccountsByType(getString(R.string.account_type_contacts))
-        adapter.addAll(
-                accounts.filter { account ->
-                    val bookId = AccountManager.get(this).getUserData(account, "id")
-                    bookId !in decsyncIds
-                }
-        )
-
-        address_books_cardview_unknown.visibility = if (adapter.isEmpty) View.GONE else View.VISIBLE
-
-        address_books_unknown.adapter = adapter
-        address_books_unknown.onItemClickListener = onAddressBookUnknownClickListener
+        CoroutineScope(Dispatchers.Main).launch {
+            val adapter = address_books_unknown.adapter as AddressBookUnknownAdapter
+            adapter.clear()
+            adapter.addAll(accounts)
+            address_books_cardview_unknown.visibility = if (adapter.isEmpty) View.GONE else View.VISIBLE
+        }
     }
 
     private fun loadCalendars(decsyncDir: NativeFile): List<String> {
-        val adapter = CalendarAdapter(this)
-
-        adapter.clear()
         val decsyncIds = listDecsyncCollections(decsyncDir, "calendars")
-        adapter.addAll(
-                decsyncIds.mapNotNull {
-                    val info = Decsync.getStaticInfo(decsyncDir, "calendars", it)
-                    val deleted = info[JsonLiteral("deleted")]?.boolean ?: false
-                    if (!deleted) {
-                        val name = info[JsonLiteral("name")]?.content ?: it
-                        CollectionInfo(CollectionInfo.Type.CALENDAR, it, name, this)
-                    } else {
-                        null
-                    }
-                }
-        )
+        val collectionInfos = decsyncIds.mapNotNull {
+            val info = Decsync.getStaticInfo(decsyncDir, "calendars", it)
+            val deleted = info[JsonLiteral("deleted")]?.boolean ?: false
+            if (!deleted) {
+                val name = info[JsonLiteral("name")]?.content ?: it
+                CollectionInfo(CollectionInfo.Type.CALENDAR, it, name, this)
+            } else {
+                null
+            }
+        }
 
-        calendars.adapter = adapter
-        calendars.onItemClickListener = onItemClickListener
+        CoroutineScope(Dispatchers.Main).launch {
+            val adapter = calendars.adapter as CalendarAdapter
+            adapter.clear()
+            adapter.addAll(collectionInfos)
+        }
 
         return decsyncIds
     }
 
     private fun loadCalendarsUnknown(decsyncIds: List<String>) {
-        val adapter = CalendarUnknownAdapter(this)
-
-        adapter.clear()
         val calendarsAccount = Account(PrefUtils.getCalendarAccountName(this), getString(R.string.account_type_calendars))
+        val idAndNames = mutableListOf<DecsyncIdName>()
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED) {
             contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
                 try {
@@ -244,7 +250,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             val decsyncId = cursor.getString(0)
                             val name = cursor.getString(1)
                             if (decsyncId !in decsyncIds) {
-                                adapter.add(DecsyncIdName(decsyncId, name))
+                                idAndNames.add(DecsyncIdName(decsyncId, name))
                             }
                         }
                     }
@@ -258,11 +264,12 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
             }
         }
 
-
-        calendars_cardview_unknown.visibility = if (adapter.isEmpty) View.GONE else View.VISIBLE
-
-        calendars_unknown.adapter = adapter
-        calendars_unknown.onItemClickListener = onCalendarUnknownClickListener
+        CoroutineScope(Dispatchers.Main).launch {
+            val adapter = calendars_unknown.adapter as CalendarUnknownAdapter
+            adapter.clear()
+            adapter.addAll(idAndNames)
+            calendars_cardview_unknown.visibility = if (adapter.isEmpty) View.GONE else View.VISIBLE
+        }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
