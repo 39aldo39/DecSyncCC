@@ -76,6 +76,18 @@
     <string name="settings_decsync_collections_enabled_title">Enabled collections</string>
     <string name="settings_decsync_collections_enabled_message">There are still some collections enabled. Disable all collections before changing the DecSync directory.</string>
     <string name="settings_decsync_dir_not_configured">No DecSync directory configured</string>
+    <string name="settings_category_theme">Theme</string>
+    <string name="settings_theme">Theme</string>
+    <string-array name="settings_theme_values" translatable="false">
+        <item>-1</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+    <string-array name="settings_theme_names">
+        <item>System default</item>
+        <item>Light</item>
+        <item>Dark</item>
+    </string-array>
     <string name="settings_category_sync">Synchronization</string>
     <string name="settings_offline_sync">Synchronize offline</string>
     <string name="settings_offline_sync_description">Synchronize the collections even when the device is offline</string>

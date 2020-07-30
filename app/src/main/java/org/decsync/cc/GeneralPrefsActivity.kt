@@ -30,7 +30,9 @@ import android.provider.CalendarContract
 import android.view.MenuItem
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
+import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import com.nononsenseapps.filepicker.FilePickerActivity
@@ -79,6 +81,7 @@ class GeneralPrefsActivity : AppCompatActivity() {
                 initDecsyncFile(true)
                 initDecsyncFileReset(true)
             }
+            initTheme()
             initOfflineSync()
         }
 
@@ -194,6 +197,16 @@ class GeneralPrefsActivity : AppCompatActivity() {
                         .setMessage(e.message)
                         .setPositiveButton(android.R.string.ok) { _, _ -> }
                         .show()
+            }
+        }
+
+        private fun initTheme() {
+            val preference = findPreference<Preference>(PrefUtils.THEME)!!
+            preference.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            preference.setOnPreferenceChangeListener { _, newValue ->
+                val mode = Integer.parseInt(newValue as String)
+                AppCompatDelegate.setDefaultNightMode(mode)
+                true
             }
         }
 

@@ -1,15 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="grey200">#eeeeee</color>
-    <color name="grey500">#9E9E9E</color>
-
-    <color name="primaryColor">#64b5f6</color>
-    <color name="primaryDarkColor">#0277bd</color>
-    <color name="secondaryColor">#e040fb</color>
-    <color name="primaryTextColor">#000000</color>
-    <color name="secondaryTextColor">@color/grey500</color>
-
-    <color name="actionBarButton">#8a000000</color>
+    <color name="primaryColor">#29B6F6</color>
+    <color name="primaryDarkColor">#0277BD</color>
+    <color name="secondaryColor">#E040FB</color>
 
     <color name="bg_intro_welcome">#3F51B5</color>
     <color name="bg_intro_directory">#009688</color>

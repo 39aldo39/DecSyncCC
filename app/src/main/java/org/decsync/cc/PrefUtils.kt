@@ -41,6 +41,7 @@ object PrefUtils {
     const val UPDATE_FORCES_SAF = "update_forces_saf"
     const val OWN_APP_ID = "own_app_id"
     const val HINT_BATTERY_OPTIMIZATIONS = "hint.battery_optimizations"
+    const val THEME = "theme"
     const val OFFLINE_SYNC = "offline_sync"
     const val OFFLINE_SYNC_CALENDARS = "offline_sync.calendars"
     const val OFFLINE_SYNC_CONTACTS = "offline_sync.contacts"

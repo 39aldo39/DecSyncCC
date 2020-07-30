@@ -39,15 +39,31 @@
     <PreferenceCategory
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:title="@string/settings_category_sync">
+        android:title="@string/settings_category_theme">
 
-    <CheckBoxPreference
+        <ListPreference
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:key="theme"
+            android:defaultValue="-1"
+            android:title="@string/settings_theme"
+            android:entries="@array/settings_theme_names"
+            android:entryValues="@array/settings_theme_values"/>
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:key="offline_sync"
-        android:defaultValue="false"
-        android:title="@string/settings_offline_sync"
-        android:summary="@string/settings_offline_sync_description"/>
+        android:title="@string/settings_category_sync">
+
+        <CheckBoxPreference
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:key="offline_sync"
+            android:defaultValue="false"
+            android:title="@string/settings_offline_sync"
+            android:summary="@string/settings_offline_sync_description"/>
 
     </PreferenceCategory>
 
