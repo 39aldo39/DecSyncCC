@@ -66,16 +66,16 @@ class LocalContact: AndroidContact {
         val uid = uid ?: UUID.randomUUID().toString()
         contact.uid = uid
 
+        val os = ByteArrayOutputStream()
+        contact.write(VCardVersion.V4_0, GroupMethod.CATEGORIES, os)
+        val vcard = os.toString("UTF-8")
+        decsync.setEntry(listOf("resources", uid), JsonNull, JsonLiteral(vcard))
+
         val values = ContentValues()
         values.put(COLUMN_LOCAL_UID, uid)
         values.put(COLUMN_LOCAL_BOOKID, bookId)
         values.put(RawContacts.DIRTY, 0)
         addressBook.provider!!.update(rawContactSyncURI(), values, null, null)
-
-        val os = ByteArrayOutputStream()
-        contact.write(VCardVersion.V4_0, GroupMethod.CATEGORIES, os)
-        val vcard = os.toString("UTF-8")
-        decsync.setEntry(listOf("resources", uid), JsonNull, JsonLiteral(vcard))
     }
 
     object ContactFactory: AndroidContactFactory<LocalContact> {

@@ -55,6 +55,11 @@ class LocalEvent: AndroidEvent {
         val uid = event.uid ?: UUID.randomUUID().toString()
         event.uid = uid
 
+        val os = ByteArrayOutputStream()
+        event.write(os)
+        val ical = os.toString("UTF-8")
+        decsync.setEntry(listOf("resources", uid), JsonNull, JsonLiteral(ical))
+
         val values = ContentValues()
         values.put(Events.UID_2445, uid)
         values.put(Events.DIRTY, 0)
@@ -62,11 +67,6 @@ class LocalEvent: AndroidEvent {
                 values, "${Events.ORIGINAL_ID}=?", arrayOf(id.toString()))
         values.put(Events._SYNC_ID, uid)
         calendar.provider.update(eventSyncURI(), values, null, null)
-
-        val os = ByteArrayOutputStream()
-        event.write(os)
-        val ical = os.toString("UTF-8")
-        decsync.setEntry(listOf("resources", uid), JsonNull, JsonLiteral(ical))
     }
 
     override fun populateEvent(row: ContentValues, groupScheduled: Boolean) {
