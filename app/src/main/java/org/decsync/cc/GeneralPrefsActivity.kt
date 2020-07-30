@@ -48,6 +48,7 @@ const val CHOOSE_DECSYNC_DIRECTORY = 0
 class GeneralPrefsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        PrefUtils.notifyTheme(this)
         super.onCreate(savedInstanceState)
 
         supportActionBar?.setDisplayHomeAsUpEnabled(true)

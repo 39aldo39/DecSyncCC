@@ -22,6 +22,7 @@ import android.content.Context
 import android.os.Build
 import android.os.Environment
 import android.preference.PreferenceManager
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
@@ -141,6 +142,12 @@ object PrefUtils {
         val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
         editor.putBoolean(HINT_BATTERY_OPTIMIZATIONS, value)
         editor.apply()
+    }
+
+    fun notifyTheme(context: Context) {
+        val settings = PreferenceManager.getDefaultSharedPreferences(context)
+        val mode = Integer.parseInt(settings.getString(THEME, null) ?: "-1")
+        AppCompatDelegate.setDefaultNightMode(mode)
     }
 
     fun getOfflineSync(context: Context): Boolean {

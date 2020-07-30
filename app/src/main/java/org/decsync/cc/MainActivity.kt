@@ -35,6 +35,7 @@ import androidx.appcompat.widget.Toolbar
 import android.util.Log
 import android.view.*
 import android.widget.*
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
@@ -77,6 +78,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     private var error = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        PrefUtils.notifyTheme(this)
         super.onCreate(savedInstanceState)
 
         PrefUtils.checkAppUpgrade(this)
