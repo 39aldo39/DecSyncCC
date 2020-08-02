@@ -14,9 +14,11 @@
 
     <!-- MainActivity -->
     <string name="account_contacts">Agenda de contactos</string>
+    <string name="account_contacts_unknown">Agenda de contactos (desconocida)</string>
     <string name="account_calendars">Calendarios</string>
     <string name="account_synchronize_now">Sincronizar ahora</string>
     <string name="account_synchronizing_now">Sincronizando ahora</string>
+    <string name="account_calendars_unknown">Calendarios (desconocido)</string>
     <string name="account_synchronize_this_collection">sincroniza esta colección</string>
     <string name="account_refresh_address_book_list">Actualizar lista de agenda de contactos</string>
     <string name="account_create_new_address_book">Crear nueva agenda de contactos</string>
