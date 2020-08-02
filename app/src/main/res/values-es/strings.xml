@@ -36,8 +36,21 @@
     <!-- Notifications -->
     <string name="notification_adding_contacts">Añadiendo contactos de %s</string>
     <string name="notification_adding_events">Añadiendo eventos de %s</string>
+    <string name="notification_saf_update_title">Nueva versión de Android</string>
+    <string name="notification_saf_update_message">La carpeta DecSync necesita ser reseleccionada</string>
+  
+    <!-- IntroActivity -->
+    <string name="intro_welcome_title">Bienvenidos a DecSync CC</string>
+    <string name="intro_welcome_desc">DecSync CC sincroniza contactos y calendarios usando DecSync</string>
+    <string name="intro_directory_title">Carpeta DecSync</string>
+    <string name="intro_directory_desc">Para iniciar la sincronización, lo único que ncesita hacer es vincular la carpeta DecSync</string>
+    <string name="intro_directory_button">Seleccione la carpeta</string>
+    <string name="intro_directory_select">Por favor, seleccione select a DecSync directory</string>
 
-    <!-- startup dialogs -->
+    <!-- SafUpdateActivity -->
+    <string name="saf_update_desc">Debido a una actualización de Android, necesita reseleccionar la carpeta DecSync</string>
+  
+    <!-- Startup dialogs -->
     <string name="startup_battery_optimization">Sincronización programada</string>
     <string name="startup_battery_optimization_message">Su dispositivo limitará la sincronización de DecSync CC. Para cumplir la sincronización regular de DecSync CC, desactive la "optimización de la batería".</string>
     <string name="startup_battery_optimization_disable">Desactivar DecSync CC</string>
