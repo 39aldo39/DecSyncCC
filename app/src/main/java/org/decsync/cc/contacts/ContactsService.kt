@@ -159,6 +159,10 @@ class ContactsWorker(val context: Context, params: WorkerParameters) : Worker(co
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SYNC_STATS) != PackageManager.PERMISSION_GRANTED) {
             return Result.failure()
         }
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            return Result.failure()
+        }
 
         val provider = context.contentResolver.acquireContentProviderClient(ContactsContract.AUTHORITY) ?: return Result.failure()
         try {
