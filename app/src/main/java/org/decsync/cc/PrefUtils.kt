@@ -66,7 +66,6 @@ object PrefUtils {
     fun getNativeFile(context: Context): NativeFile? {
         return if (getUseSaf(context)) {
             val decsyncDir = DecsyncPrefUtils.getDecsyncDir(context) ?: return null
-            checkUriPermissions(context, decsyncDir)
             nativeFileFromDirUri(context, decsyncDir)
         } else {
             nativeFileFromFile(getDecsyncFile(context))
