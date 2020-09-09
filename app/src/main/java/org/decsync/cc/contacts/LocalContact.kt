@@ -22,11 +22,10 @@ import android.content.ContentValues
 import android.provider.ContactsContract.RawContacts
 import at.bitfire.vcard4android.*
 import ezvcard.VCardVersion
-import kotlinx.serialization.json.JsonLiteral
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 import org.decsync.cc.Extra
 import org.decsync.library.Decsync
-import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.util.*
 
@@ -69,7 +68,7 @@ class LocalContact: AndroidContact {
         val os = ByteArrayOutputStream()
         contact.write(VCardVersion.V4_0, GroupMethod.CATEGORIES, os)
         val vcard = os.toString("UTF-8")
-        decsync.setEntry(listOf("resources", uid), JsonNull, JsonLiteral(vcard))
+        decsync.setEntry(listOf("resources", uid), JsonNull, JsonPrimitive(vcard))
 
         val values = ContentValues()
         values.put(COLUMN_LOCAL_UID, uid)

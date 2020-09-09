@@ -35,7 +35,7 @@ import androidx.core.content.ContextCompat
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import at.bitfire.ical4android.AndroidCalendar
-import kotlinx.serialization.json.JsonLiteral
+import kotlinx.serialization.json.JsonPrimitive
 import org.decsync.cc.*
 import org.decsync.cc.calendars.CalendarDecsyncUtils.CalendarFactory
 import org.decsync.cc.contacts.syncAdapterUri
@@ -103,7 +103,7 @@ class CalendarsService : Service() {
 
                         // Detect changed color
                         if (color != oldColor) {
-                            decsync.setEntry(listOf("info"), JsonLiteral("color"), JsonLiteral(String.format("#%06X", color and 0xFFFFFF)))
+                            decsync.setEntry(listOf("info"), JsonPrimitive("color"), JsonPrimitive(String.format("#%06X", color and 0xFFFFFF)))
 
                             val values = ContentValues()
                             values.put(COLUMN_OLD_COLOR, color)

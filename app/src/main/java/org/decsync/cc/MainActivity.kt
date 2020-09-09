@@ -44,10 +44,7 @@ import at.bitfire.ical4android.AndroidCalendar
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.*
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonLiteral
-import kotlinx.serialization.json.boolean
-import kotlinx.serialization.json.content
+import kotlinx.serialization.json.*
 import org.decsync.cc.calendars.COLUMN_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.calendars.CalendarDecsyncUtils
 import org.decsync.cc.calendars.CalendarDecsyncUtils.addColor
@@ -185,9 +182,9 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         val decsyncIds = listDecsyncCollections(decsyncDir, "contacts")
         val collectionInfos = decsyncIds.mapNotNull { id ->
             val info = Decsync.getStaticInfo(decsyncDir, "contacts", id)
-            val deleted = info[JsonLiteral("deleted")]?.boolean ?: false
+            val deleted = info[JsonPrimitive("deleted")]?.jsonPrimitive?.boolean ?: false
             if (!deleted) {
-                val name = info[JsonLiteral("name")]?.content ?: id
+                val name = info[JsonPrimitive("name")]?.jsonPrimitive?.content ?: id
                 CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, id, name, this)
             } else {
                 null
@@ -222,9 +219,9 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         val decsyncIds = listDecsyncCollections(decsyncDir, "calendars")
         val collectionInfos = decsyncIds.mapNotNull {
             val info = Decsync.getStaticInfo(decsyncDir, "calendars", it)
-            val deleted = info[JsonLiteral("deleted")]?.boolean ?: false
+            val deleted = info[JsonPrimitive("deleted")]?.jsonPrimitive?.boolean ?: false
             if (!deleted) {
-                val name = info[JsonLiteral("name")]?.content ?: it
+                val name = info[JsonPrimitive("name")]?.jsonPrimitive?.content ?: it
                 CollectionInfo(CollectionInfo.Type.CALENDAR, it, name, this)
             } else {
                 null
@@ -364,7 +361,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                 val id = "colID%05d".format(Random().nextInt(100000))
                                 val info = CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, id, name, this)
                                 val decsync = getDecsync(info)
-                                decsync.setEntry(listOf("info"), JsonLiteral("name"), JsonLiteral(name))
+                                decsync.setEntry(listOf("info"), JsonPrimitive("name"), JsonPrimitive(name))
                                 loadBooks(info.decsyncDir)
                             }
                         }
@@ -387,7 +384,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                 val id = "colID%05d".format(Random().nextInt(100000))
                                 val info = CollectionInfo(CollectionInfo.Type.CALENDAR, id, name, this)
                                 val decsync = getDecsync(info)
-                                decsync.setEntry(listOf("info"), JsonLiteral("name"), JsonLiteral(name))
+                                decsync.setEntry(listOf("info"), JsonPrimitive("name"), JsonPrimitive(name))
                                 loadCalendars(info.decsyncDir)
                             }
                         }
@@ -479,7 +476,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             values.put(Calendars.NAME, info.id)
                             values.put(Calendars.CALENDAR_DISPLAY_NAME, info.name)
                             val decsyncInfo = Decsync.getStaticInfo(info.decsyncDir, info.syncType, info.collection)
-                            val color = decsyncInfo[JsonLiteral("color")]?.content
+                            val color = decsyncInfo[JsonPrimitive("color")]?.jsonPrimitive?.content
                             if (color != null) {
                                 addColor(values, color)
                             }
@@ -569,7 +566,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             .setPositiveButton(android.R.string.ok) { _, _ ->
                                 val name = input.text.toString()
                                 if (!name.isBlank() && name != info.name) {
-                                    setCollectionInfo(info, JsonLiteral("name"), JsonLiteral(name))
+                                    setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
                                 }
                             }
                             .setNegativeButton(android.R.string.cancel) { _, _ -> }
@@ -579,7 +576,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     AlertDialog.Builder(this)
                             .setTitle(getString(R.string.delete_collection_title, info.name))
                             .setPositiveButton(android.R.string.yes) { _, _ ->
-                                setCollectionInfo(info, JsonLiteral("deleted"), JsonLiteral(true))
+                                setCollectionInfo(info, JsonPrimitive("deleted"), JsonPrimitive(true))
                             }
                             .setNegativeButton(android.R.string.no) { _, _ -> }
                             .show()
@@ -639,7 +636,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             val countDecsync = Decsync<Count>(info.decsyncDir, info.syncType, info.collection, latestAppId)
                             countDecsync.addListener(emptyList()) { _, entry, count ->
                                 if (!isActive) throw CancellationException()
-                                if (!entry.value.isNull) {
+                                if (entry.value !is JsonNull) {
                                     count.count++
                                 }
                             }
@@ -745,7 +742,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
             val vColor = v.findViewById<View>(R.id.color)
             val decsyncInfo = Decsync.getStaticInfo(info.decsyncDir, info.syncType, info.collection)
-            val color = decsyncInfo[JsonLiteral("color")]?.content
+            val color = decsyncInfo[JsonPrimitive("color")]?.jsonPrimitive?.content
             vColor.visibility = color?.let {
                 try { Color.parseColor(it) } catch (e: IllegalArgumentException) { null }
             }?.let {

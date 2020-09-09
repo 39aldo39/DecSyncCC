@@ -25,12 +25,11 @@ import at.bitfire.ical4android.AndroidCalendar
 import at.bitfire.ical4android.AndroidEvent
 import at.bitfire.ical4android.AndroidEventFactory
 import at.bitfire.ical4android.Event
-import kotlinx.serialization.json.JsonLiteral
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 import org.decsync.cc.Extra
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.library.Decsync
-import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.util.*
 
@@ -58,7 +57,7 @@ class LocalEvent: AndroidEvent {
         val os = ByteArrayOutputStream()
         event.write(os)
         val ical = os.toString("UTF-8")
-        decsync.setEntry(listOf("resources", uid), JsonNull, JsonLiteral(ical))
+        decsync.setEntry(listOf("resources", uid), JsonNull, JsonPrimitive(ical))
 
         val values = ContentValues()
         values.put(Events.UID_2445, uid)

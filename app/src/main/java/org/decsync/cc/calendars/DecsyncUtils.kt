@@ -41,11 +41,11 @@ const val COLUMN_NUM_PROCESSED_ENTRIES = Calendars.CAL_SYNC2
 object CalendarDecsyncUtils {
     fun infoListener(path: List<String>, entry: Decsync.Entry, extra: Extra) {
         Log.d(TAG, "Execute info entry $entry")
-        val info = entry.key.content
+        val info = entry.key.jsonPrimitive.content
         val account = extra.info.getAccount(extra.context)
         when (info) {
             "deleted" -> {
-                val deleted = entry.value.boolean
+                val deleted = entry.value.jsonPrimitive.boolean
                 if (!deleted) {
                     return
                 }
@@ -55,7 +55,7 @@ object CalendarDecsyncUtils {
                         "${Calendars.NAME}=?", arrayOf(extra.info.id))
             }
             "name" -> {
-                val name = entry.value.content
+                val name = entry.value.jsonPrimitive.content
                 Log.d(TAG, "Rename calendar ${extra.info.name} to $name")
 
                 val values = ContentValues()
@@ -64,7 +64,7 @@ object CalendarDecsyncUtils {
                         values, "${Calendars.NAME}=?", arrayOf(extra.info.id))
             }
             "color" -> {
-                val color = entry.value.content
+                val color = entry.value.jsonPrimitive.content
                 val values = ContentValues()
                 val success = addColor(values, color)
                 if (!success) return
@@ -97,7 +97,7 @@ object CalendarDecsyncUtils {
             return
         }
         val uid = path[0]
-        val ical = entry.value.contentOrNull
+        val ical = entry.value.jsonPrimitive.contentOrNull
 
         val account = extra.info.getAccount(extra.context)
         val calendarId = extra.provider.query(syncAdapterUri(account, Calendars.CONTENT_URI), arrayOf(Calendars._ID),

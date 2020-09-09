@@ -40,10 +40,10 @@ const val KEY_NUM_PROCESSED_ENTRIES = "num-processed-entries"
 object ContactDecsyncUtils {
     fun infoListener(path: List<String>, entry: Decsync.Entry, extra: Extra) {
         Log.d(TAG, "Execute info entry $entry")
-        val info = entry.key.content
+        val info = entry.key.jsonPrimitive.content
         when (info) {
             "deleted" -> {
-                val deleted = entry.value.boolean
+                val deleted = entry.value.jsonPrimitive.boolean
                 if (!deleted) {
                     return
                 }
@@ -69,7 +69,7 @@ object ContactDecsyncUtils {
                 }
             }
             "name" -> {
-                val name = entry.value.content
+                val name = entry.value.jsonPrimitive.content
                 Log.d(TAG, "Rename address book ${extra.info.name} to $name")
 
                 // It is possible to temporarily have 2 accounts with the same name, since the names may be swapped
@@ -115,7 +115,7 @@ object ContactDecsyncUtils {
             return
         }
         val uid = path[0]
-        val vcard = entry.value.contentOrNull
+        val vcard = entry.value.jsonPrimitive.contentOrNull
 
         val account = extra.info.getAccount(extra.context)
         val bookId = extra.info.id
