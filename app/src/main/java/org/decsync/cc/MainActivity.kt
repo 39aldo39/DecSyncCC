@@ -222,7 +222,8 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
             val deleted = info[JsonPrimitive("deleted")]?.jsonPrimitive?.boolean ?: false
             if (!deleted) {
                 val name = info[JsonPrimitive("name")]?.jsonPrimitive?.content ?: it
-                CollectionInfo(CollectionInfo.Type.CALENDAR, it, name, this)
+                val color = info[JsonPrimitive("color")]?.jsonPrimitive?.content
+                CollectionInfo(CollectionInfo.Type.CALENDAR, it, name, this, color)
             } else {
                 null
             }
@@ -382,7 +383,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             val name = input.text.toString()
                             if (!name.isBlank()) {
                                 val id = "colID%05d".format(Random().nextInt(100000))
-                                val info = CollectionInfo(CollectionInfo.Type.CALENDAR, id, name, this)
+                                val info = CollectionInfo(CollectionInfo.Type.CALENDAR, id, name, this, null)
                                 val decsync = getDecsync(info)
                                 decsync.setEntry(listOf("info"), JsonPrimitive("name"), JsonPrimitive(name))
                                 loadCalendars(info.decsyncDir)
@@ -741,9 +742,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
             checked.isChecked = isChecked
 
             val vColor = v.findViewById<View>(R.id.color)
-            val decsyncInfo = Decsync.getStaticInfo(info.decsyncDir, info.syncType, info.collection)
-            val color = decsyncInfo[JsonPrimitive("color")]?.jsonPrimitive?.content
-            vColor.visibility = color?.let {
+            vColor.visibility = info.color?.let {
                 try { Color.parseColor(it) } catch (e: IllegalArgumentException) { null }
             }?.let {
                 vColor.setBackgroundColor(it)

@@ -37,7 +37,8 @@ class CollectionInfo (
         val type: Type,
         val id: String,
         val name: String,
-        context: Context
+        context: Context,
+        val color: String? = null
 ) {
     val decsyncDir = PrefUtils.getNativeFile(context) ?: throw Exception(context.getString(R.string.settings_decsync_dir_not_configured))
     val syncType = type.toString()
