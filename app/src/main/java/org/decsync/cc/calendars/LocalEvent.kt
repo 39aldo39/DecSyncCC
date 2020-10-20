@@ -18,13 +18,9 @@
 
 package org.decsync.cc.calendars
 
-import android.content.ContentProviderOperation
 import android.content.ContentValues
 import android.provider.CalendarContract.Events
-import at.bitfire.ical4android.AndroidCalendar
-import at.bitfire.ical4android.AndroidEvent
-import at.bitfire.ical4android.AndroidEventFactory
-import at.bitfire.ical4android.Event
+import at.bitfire.ical4android.*
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import org.decsync.cc.Extra
@@ -75,7 +71,7 @@ class LocalEvent: AndroidEvent {
         event.uid = row.getAsString(Events.UID_2445)
     }
 
-    override fun buildEvent(recurrence: Event?, builder: ContentProviderOperation.Builder) {
+    override fun buildEvent(recurrence: Event?, builder: BatchOperation.CpoBuilder) {
         super.buildEvent(recurrence, builder)
         val event = requireNotNull(event)
 
