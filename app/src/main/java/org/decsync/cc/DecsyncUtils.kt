@@ -23,7 +23,6 @@ import android.content.ContentProviderClient
 import android.content.ContentValues
 import android.content.Context
 import android.provider.CalendarContract
-import kotlinx.serialization.json.JsonElement
 import org.decsync.cc.calendars.COLUMN_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.calendars.CalendarDecsyncUtils
 import org.decsync.cc.contacts.ContactDecsyncUtils
