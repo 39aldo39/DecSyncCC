@@ -44,6 +44,7 @@ sealed class CollectionInfo (
     abstract fun getAccount(context: Context): Account
     abstract fun getProviderClient(context: Context): ContentProviderClient?
     abstract fun isEnabled(context: Context): Boolean
+    abstract fun remove(context: Context)
 }
 
 class AddressBookInfo(id: String, name: String) :
@@ -65,6 +66,16 @@ class AddressBookInfo(id: String, name: String) :
     override fun isEnabled(context: Context): Boolean {
         val account = getAccount(context)
         return AccountManager.get(context).getAccountsByType(account.type).any { it.name == account.name }
+    }
+
+    override fun remove(context: Context) {
+        val account = getAccount(context)
+        if (Build.VERSION.SDK_INT >= 22) {
+            AccountManager.get(context).removeAccountExplicitly(account)
+        } else {
+            @Suppress("deprecation")
+            AccountManager.get(context).removeAccount(account, null, null)
+        }
     }
 }
 
@@ -107,6 +118,22 @@ class CalendarInfo(id: String, name: String, color: Int?) :
         }
         return result
     }
+
+    override fun remove(context: Context) {
+        val account = getAccount(context)
+        context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
+            try {
+                provider.delete(syncAdapterUri(account, Calendars.CONTENT_URI),
+                        "${Calendars.NAME}=?", arrayOf(id))
+            } finally {
+                if (Build.VERSION.SDK_INT >= 24)
+                    provider.close()
+                else
+                    @Suppress("DEPRECATION")
+                    provider.release()
+            }
+        }
+    }
 }
 
 @ExperimentalStdlibApi
@@ -140,6 +167,13 @@ class TaskListInfo(id: String, name: String, color: Int?) :
         val account = getAccount(context)
         return getProvider(context)?.use { provider ->
             LocalTaskList.findBySyncId(account, provider, id)
+        }
+    }
+
+    override fun remove(context: Context) {
+        val account = getAccount(context)
+        getProvider(context)?.use { provider ->
+            LocalTaskList.findBySyncId(account, provider, id)?.delete()
         }
     }
 }

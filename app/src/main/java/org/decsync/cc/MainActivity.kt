@@ -164,19 +164,19 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         address_books.onItemClickListener = onAddressBookClickListener
 
         address_books_unknown.adapter = CollectionUnknownAdapter(this)
-        address_books_unknown.onItemClickListener = onAddressBookUnknownClickListener
+        address_books_unknown.onItemClickListener = onCollectionUnknownListener
 
         calendars.adapter = CollectionAdapter(this)
         calendars.onItemClickListener = onCalendarClickListener
 
         calendars_unknown.adapter = CollectionUnknownAdapter(this)
-        calendars_unknown.onItemClickListener = onCalendarUnknownClickListener
+        calendars_unknown.onItemClickListener = onCollectionUnknownListener
 
         task_lists.adapter = CollectionAdapter(this)
         task_lists.onItemClickListener = onTaskListClickListener
 
         task_lists_unknown.adapter = CollectionUnknownAdapter(this)
-        task_lists_unknown.onItemClickListener = onTaskListUnknownClickListener
+        task_lists_unknown.onItemClickListener = onCollectionUnknownListener
     }
 
     override fun onResume() {
@@ -758,74 +758,12 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         adapter.notifyDataSetChanged()
     }
 
-    private val onAddressBookUnknownClickListener = AdapterView.OnItemClickListener { parent, view, position, _ ->
-        if (!view.isEnabled)
-            return@OnItemClickListener
-
+    private val onCollectionUnknownListener = AdapterView.OnItemClickListener { parent, view, position, _ ->
+        if (!view.isEnabled) return@OnItemClickListener
         val list = parent as ListView
-        val adapter = list.adapter as ArrayAdapter<AddressBookInfo>
+        val adapter = list.adapter as ArrayAdapter<CollectionInfo>
         val info = adapter.getItem(position)!!
-
-        val account = info.getAccount(this)
-        if (Build.VERSION.SDK_INT >= 22) {
-            AccountManager.get(this).removeAccountExplicitly(account)
-        } else {
-            @Suppress("deprecation")
-            AccountManager.get(this).removeAccount(account, null, null)
-        }
-        adapter.remove(info)
-    }
-
-    private val onCalendarUnknownClickListener = AdapterView.OnItemClickListener { parent, view, position, _ ->
-        if (!view.isEnabled)
-            return@OnItemClickListener
-
-        val list = parent as ListView
-        val adapter = list.adapter as ArrayAdapter<CalendarInfo>
-        val info = adapter.getItem(position)!!
-
-        val calendarsAccount = Account(PrefUtils.getCalendarAccountName(this), getString(R.string.account_type_calendars))
-        contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
-            try {
-                provider.delete(syncAdapterUri(calendarsAccount, Calendars.CONTENT_URI),
-                        "${Calendars.NAME}=?", arrayOf(info.id))
-            } finally {
-                if (Build.VERSION.SDK_INT >= 24)
-                    provider.close()
-                else
-                    @Suppress("DEPRECATION")
-                    provider.release()
-            }
-        }
-
-        adapter.remove(info)
-    }
-
-    private val onTaskListUnknownClickListener = AdapterView.OnItemClickListener { parent, view, position, _ ->
-        if (!view.isEnabled)
-            return@OnItemClickListener
-
-        val list = parent as ListView
-        val adapter = list.adapter as ArrayAdapter<TaskListInfo>
-        val info = adapter.getItem(position)!!
-
-        val tasksAccount = Account(PrefUtils.getTasksAccountName(this), getString(R.string.account_type_tasks))
-        val authority = PrefUtils.getTasksAuthority(this) ?: return@OnItemClickListener
-        contentResolver.acquireContentProviderClient(authority)?.let { provider ->
-            try {
-                val providerName = TaskProvider.ProviderName.fromAuthority(authority)
-                val taskProvider = TaskProvider.fromProviderClient(this, providerName, provider)
-                val taskList = LocalTaskList.findBySyncId(tasksAccount, taskProvider, info.id)
-                taskList?.delete()
-            } finally {
-                if (Build.VERSION.SDK_INT >= 24)
-                    provider.close()
-                else
-                    @Suppress("DEPRECATION")
-                    provider.release()
-            }
-        }
-
+        info.remove(this)
         adapter.remove(info)
     }
 
