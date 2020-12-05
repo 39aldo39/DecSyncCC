@@ -39,6 +39,22 @@
     <PreferenceCategory
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:title="@string/settings_category_tasks">
+
+        <org.decsync.cc.ConditionalListPreference
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:key="tasks_authority"
+            android:defaultValue=""
+            android:title="@string/settings_task_app"
+            android:entries="@array/settings_task_app_names"
+            android:entryValues="@array/settings_task_app_values"/>
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:title="@string/settings_category_theme">
 
         <ListPreference

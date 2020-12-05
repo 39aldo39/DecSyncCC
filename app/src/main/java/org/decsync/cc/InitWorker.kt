@@ -9,29 +9,24 @@ import androidx.work.WorkerParameters
 @ExperimentalStdlibApi
 abstract class InitWorker(val context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
-    abstract val type: CollectionInfo.Type
-    abstract val authority: String
+    abstract val notificationTitleResId: Int
+    abstract fun getCollectionInfo(id: String, name: String): CollectionInfo
 
     override suspend fun doWork(): Result {
         val id = inputData.getString(KEY_ID) ?: return Result.failure()
         val name = inputData.getString(KEY_NAME) ?: return Result.failure()
 
-        val info = CollectionInfo(type, id, name, context)
+        val info = getCollectionInfo(id, name)
 
         val notification = initSyncNotificationBuilder(context).apply {
             setSmallIcon(R.drawable.ic_notification)
-            setContentTitle(context.getString(
-                    when (type) {
-                        CollectionInfo.Type.ADDRESS_BOOK -> R.string.notification_adding_contacts
-                        CollectionInfo.Type.CALENDAR -> R.string.notification_adding_events
-                    },
-                    info.name))
+            setContentTitle(context.getString(notificationTitleResId, info.name))
         }.build()
         setForeground(ForegroundInfo(info.notificationId, notification))
 
-        val provider = context.contentResolver.acquireContentProviderClient(authority) ?: return Result.failure()
+        val provider = info.getProviderClient(context) ?: return Result.failure()
         try {
-            val decsync = getDecsync(info)
+            val decsync = getDecsync(info, context)
             val extra = Extra(info, context, provider)
             setNumProcessedEntries(extra, 0)
             decsync.initStoredEntries()

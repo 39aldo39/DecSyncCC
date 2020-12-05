@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item android:id="@+id/create_task_list"
+        android:icon="@drawable/ic_add_light"
+        android:title="@string/account_create_new_task_list"
+        app:showAsAction="ifRoom"/>
+
+</menu>

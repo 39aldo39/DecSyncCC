@@ -22,6 +22,7 @@ import android.Manifest
 import android.accounts.Account
 import android.accounts.AccountManager
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -35,9 +36,12 @@ import androidx.core.content.ContextCompat
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import at.bitfire.ical4android.AndroidTaskList
+import at.bitfire.ical4android.TaskProvider
 import com.nononsenseapps.filepicker.FilePickerActivity
-import com.nononsenseapps.filepicker.Utils
+import com.nononsenseapps.filepicker.Utils as FilepickerUtils
 import org.decsync.cc.contacts.syncAdapterUri
+import org.decsync.cc.tasks.LocalTaskList
 import org.decsync.library.DecsyncException
 import org.decsync.library.DecsyncPrefUtils
 import org.decsync.library.checkDecsyncInfo
@@ -82,6 +86,7 @@ class GeneralPrefsActivity : AppCompatActivity() {
                 initDecsyncFile(true)
                 initDecsyncFileReset(true)
             }
+            initTaskApp()
             initTheme()
             initOfflineSync()
         }
@@ -151,30 +156,9 @@ class GeneralPrefsActivity : AppCompatActivity() {
 
         private fun checkCollectionEnabled(): Boolean {
             val context = requireActivity()
-
-            val addressBookAccounts = AccountManager.get(context).getAccountsByType(getString(R.string.account_type_contacts))
-            val anyAddressBookEnabled = addressBookAccounts.isNotEmpty()
-
-            var anyCalendarEnabled = false
-            val calendarsAccount = Account(PrefUtils.getCalendarAccountName(context), getString(R.string.account_type_calendars))
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED) {
-                context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
-                    anyCalendarEnabled = try {
-                        provider.query(syncAdapterUri(calendarsAccount, CalendarContract.Calendars.CONTENT_URI), emptyArray(),
-                                null, null, null)!!.use { cursor ->
-                            cursor.moveToFirst()
-                        }
-                    } finally {
-                        if (Build.VERSION.SDK_INT >= 24)
-                            provider.close()
-                        else
-                            @Suppress("DEPRECATION")
-                            provider.release()
-                    }
-                }
-            }
-
-            return if (anyAddressBookEnabled || anyCalendarEnabled) {
+            return if (anyAddressBookEnabled(context) ||
+                    anyCalendarEnabled(context) ||
+                    anyTaskListEnabled(context)) {
                 AlertDialog.Builder(context)
                         .setTitle(R.string.settings_decsync_collections_enabled_title)
                         .setMessage(R.string.settings_decsync_collections_enabled_message)
@@ -183,6 +167,69 @@ class GeneralPrefsActivity : AppCompatActivity() {
                 true
             } else {
                 false
+            }
+        }
+
+        private fun checkTaskListsEnabled(): Boolean {
+            val context = requireActivity()
+            return if (anyTaskListEnabled(context)) {
+                AlertDialog.Builder(context)
+                        .setTitle(R.string.settings_decsync_task_lists_enabled_title)
+                        .setMessage(R.string.settings_decsync_task_lists_enabled_message)
+                        .setNeutralButton(android.R.string.ok) { _, _ -> }
+                        .show()
+                true
+            } else {
+                false
+            }
+        }
+
+        private fun anyAddressBookEnabled(context: Context): Boolean {
+            val accounts = AccountManager.get(context).getAccountsByType(getString(R.string.account_type_contacts))
+            return accounts.isNotEmpty()
+        }
+
+        private fun anyCalendarEnabled(context: Context): Boolean {
+            val account = Account(PrefUtils.getCalendarAccountName(context), getString(R.string.account_type_calendars))
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+                return false
+            }
+            val provider = context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY) ?: return false
+            try {
+                provider.query(syncAdapterUri(account, CalendarContract.Calendars.CONTENT_URI), emptyArray(),
+                        null, null, null)!!.use { cursor ->
+                    return cursor.moveToFirst()
+                }
+            } finally {
+                if (Build.VERSION.SDK_INT >= 24)
+                    provider.close()
+                else
+                    @Suppress("DEPRECATION")
+                    provider.release()
+            }
+        }
+
+        private fun anyTaskListEnabled(context: Context): Boolean {
+            val account = Account(PrefUtils.getTasksAccountName(context), context.getString(R.string.account_type_tasks))
+            val authority = PrefUtils.getTasksAuthority(context) ?: return false
+            val providerName = TaskProvider.ProviderName.fromAuthority(authority)
+            for (permission in providerName.permissions) {
+                if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
+                    return false
+                }
+            }
+
+            val provider = context.contentResolver.acquireContentProviderClient(authority) ?: return false
+            try {
+                val taskProvider = TaskProvider.fromProviderClient(context, providerName, provider)
+                val taskLists = AndroidTaskList.find(account, taskProvider, LocalTaskList.Factory, null, null)
+                return taskLists.isNotEmpty()
+            } finally {
+                if (Build.VERSION.SDK_INT >= 24)
+                    provider.close()
+                else
+                    @Suppress("DEPRECATION")
+                    provider.release()
             }
         }
 
@@ -198,6 +245,28 @@ class GeneralPrefsActivity : AppCompatActivity() {
                         .setMessage(e.message)
                         .setPositiveButton(android.R.string.ok) { _, _ -> }
                         .show()
+            }
+        }
+
+        private fun initTaskApp() {
+            val preference = findPreference<ConditionalListPreference>(PrefUtils.TASKS_AUTHORITY)!!
+            preference.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            preference.entries += Utils.TASK_PROVIDER_NAMES.map { getString(it) }.toTypedArray()
+            preference.entryValues += Utils.TASK_PROVIDERS.map { it.authority }.toTypedArray()
+            preference.setOnPreferenceChangeListener { _, newValue ->
+                val authority = newValue as String
+                if (authority.isEmpty()) return@setOnPreferenceChangeListener true
+                val providerName = TaskProvider.ProviderName.fromAuthority(authority)
+                try {
+                    requireActivity().packageManager.getPackageInfo(providerName.packageName, 0)
+                    true
+                } catch (e: PackageManager.NameNotFoundException) {
+                    Utils.installApp(requireActivity(), providerName.packageName)
+                    false
+                }
+            }
+            preference.condition = {
+                !checkTaskListsEnabled()
             }
         }
 
@@ -230,7 +299,7 @@ class GeneralPrefsActivity : AppCompatActivity() {
                     val uri = data?.data
                     if (resultCode == Activity.RESULT_OK && uri != null) {
                         val oldDir = PrefUtils.getDecsyncFile(requireActivity())
-                        val newDir = Utils.getFileForUri(uri)
+                        val newDir = FilepickerUtils.getFileForUri(uri)
                         if (oldDir != newDir) {
                             setDecsyncFile(newDir)
                         }

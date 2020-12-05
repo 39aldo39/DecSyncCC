@@ -29,87 +29,117 @@ import android.provider.CalendarContract
 import android.provider.CalendarContract.Calendars
 import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
+import at.bitfire.ical4android.TaskProvider
 import org.decsync.cc.contacts.syncAdapterUri
-import org.decsync.library.DecsyncPrefUtils
+import org.decsync.cc.tasks.LocalTaskList
 
-@ExperimentalStdlibApi
-class CollectionInfo (
-        val type: Type,
+sealed class CollectionInfo (
+        val syncType: String,
         val id: String,
         val name: String,
-        context: Context,
-        val color: String? = null
+        val color: Int?
 ) {
-    val decsyncDir = PrefUtils.getNativeFile(context) ?: throw Exception(context.getString(R.string.settings_decsync_dir_not_configured))
-    val syncType = type.toString()
-    val collection = id
-    val appId = PrefUtils.getOwnAppId(context)
-    val notificationId = 2 * id.hashCode() + type.ordinal
+    val notificationId = 31 * id.hashCode() + syncType.hashCode()
 
-    enum class Type {
-        ADDRESS_BOOK,
-        CALENDAR;
+    abstract fun getAccount(context: Context): Account
+    abstract fun getProviderClient(context: Context): ContentProviderClient?
+    abstract fun isEnabled(context: Context): Boolean
+}
 
-        override fun toString(): String =
-            when (this) {
-                ADDRESS_BOOK -> "contacts"
-                CALENDAR -> "calendars"
-            }
-    }
-
-    fun getAccount(context: Context): Account {
-        val accountName = when (type) {
-            Type.ADDRESS_BOOK -> name
-            Type.CALENDAR -> PrefUtils.getCalendarAccountName(context)
-        }
-        val accountType = when (type) {
-            Type.ADDRESS_BOOK -> context.getString(R.string.account_type_contacts)
-            Type.CALENDAR -> context.getString(R.string.account_type_calendars)
-        }
+class AddressBookInfo(id: String, name: String) :
+        CollectionInfo("contacts", id, name, null) {
+    override fun getAccount(context: Context): Account {
+        val accountName = name
+        val accountType = context.getString(R.string.account_type_contacts)
         return Account(accountName, accountType)
     }
 
-    fun getProviderClient(context: Context): ContentProviderClient? {
+    override fun getProviderClient(context: Context): ContentProviderClient? {
         return try {
-            context.contentResolver.acquireContentProviderClient(
-                    when (type) {
-                        Type.ADDRESS_BOOK -> ContactsContract.AUTHORITY
-                        Type.CALENDAR -> CalendarContract.AUTHORITY
-                    }
-            )
+            context.contentResolver.acquireContentProviderClient(ContactsContract.AUTHORITY)
         } catch (e: SecurityException) {
             null
         }
     }
 
-    fun isEnabled(context: Context): Boolean {
+    override fun isEnabled(context: Context): Boolean {
         val account = getAccount(context)
-        return when (type) {
-            Type.ADDRESS_BOOK -> {
-                AccountManager.get(context).getAccountsByType(account.type).any { it.name == account.name }
-            }
-            Type.CALENDAR -> {
-                var result = false
-                if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED) {
-                    context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
-                        try {
-                            provider.query(syncAdapterUri(account, Calendars.CONTENT_URI), emptyArray(),
-                                    "${Calendars.NAME}=?", arrayOf(id), null)?.use { cursor ->
-                                if (cursor.moveToFirst()) {
-                                    result = true
-                                }
-                            }
-                        } finally {
-                            if (Build.VERSION.SDK_INT >= 24)
-                                provider.close()
-                            else
-                                @Suppress("DEPRECATION")
-                                provider.release()
+        return AccountManager.get(context).getAccountsByType(account.type).any { it.name == account.name }
+    }
+}
+
+class CalendarInfo(id: String, name: String, color: Int?) :
+        CollectionInfo("calendars", id, name, color) {
+    override fun getAccount(context: Context): Account {
+        val accountName = PrefUtils.getCalendarAccountName(context)
+        val accountType = context.getString(R.string.account_type_calendars)
+        return Account(accountName, accountType)
+    }
+
+    override fun getProviderClient(context: Context): ContentProviderClient? {
+        return try {
+            context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)
+        } catch (e: SecurityException) {
+            null
+        }
+    }
+
+    override fun isEnabled(context: Context): Boolean {
+        val account = getAccount(context)
+        var result = false
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED) {
+            context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
+                try {
+                    provider.query(syncAdapterUri(account, Calendars.CONTENT_URI), emptyArray(),
+                            "${Calendars.NAME}=?", arrayOf(id), null)?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            result = true
                         }
                     }
+                } finally {
+                    if (Build.VERSION.SDK_INT >= 24)
+                        provider.close()
+                    else
+                        @Suppress("DEPRECATION")
+                        provider.release()
                 }
-                result
             }
+        }
+        return result
+    }
+}
+
+@ExperimentalStdlibApi
+class TaskListInfo(id: String, name: String, color: Int?) :
+        CollectionInfo("tasks", id, name, color) {
+    override fun getAccount(context: Context): Account {
+        val accountName = PrefUtils.getTasksAccountName(context)
+        val accountType = context.getString(R.string.account_type_tasks)
+        return Account(accountName, accountType)
+    }
+
+    override fun getProviderClient(context: Context): ContentProviderClient? {
+        return getProvider(context)?.client
+    }
+
+    override fun isEnabled(context: Context): Boolean {
+        return try {
+            getTaskList(context) != null
+        } catch (e: SecurityException) {
+            false
+        }
+    }
+
+    fun getProvider(context: Context): TaskProvider? {
+        val authority = PrefUtils.getTasksAuthority(context) ?: return null
+        val providerName = TaskProvider.ProviderName.fromAuthority(authority)
+        return TaskProvider.acquire(context, providerName)
+    }
+
+    fun getTaskList(context: Context): LocalTaskList? {
+        val account = getAccount(context)
+        return getProvider(context)?.use { provider ->
+            LocalTaskList.findBySyncId(account, provider, id)
         }
     }
 }

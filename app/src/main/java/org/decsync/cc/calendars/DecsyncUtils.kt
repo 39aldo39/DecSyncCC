@@ -28,6 +28,7 @@ import android.util.Log
 import at.bitfire.ical4android.*
 import kotlinx.serialization.json.*
 import org.decsync.cc.Extra
+import org.decsync.cc.Utils
 import org.decsync.cc.addToNumProcessedEntries
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.library.Decsync
@@ -64,10 +65,10 @@ object CalendarDecsyncUtils {
                         values, "${Calendars.NAME}=?", arrayOf(extra.info.id))
             }
             "color" -> {
-                val color = entry.value.jsonPrimitive.content
+                val decsyncColor = entry.value.jsonPrimitive.content
+                val color = Utils.parseColor(decsyncColor) ?: return
                 val values = ContentValues()
-                val success = addColor(values, color)
-                if (!success) return
+                addColor(values, color)
 
                 Log.d(TAG, "Set color of calendar ${extra.info.name} to ${entry.value}")
                 extra.provider.update(syncAdapterUri(account, Calendars.CONTENT_URI),
@@ -79,16 +80,9 @@ object CalendarDecsyncUtils {
         }
     }
 
-    fun addColor(values: ContentValues, value: String): Boolean {
-        return try {
-            val color = Color.parseColor(value)
-            values.put(Calendars.CALENDAR_COLOR, color)
-            values.put(COLUMN_OLD_COLOR, color)
-            true
-        } catch (e: IllegalArgumentException) {
-            Log.w(TAG, "Unknown color $value", e)
-            false
-        }
+    fun addColor(values: ContentValues, color: Int) {
+        values.put(Calendars.CALENDAR_COLOR, color)
+        values.put(COLUMN_OLD_COLOR, color)
     }
 
     fun resourcesListener(path: List<String>, entry: Decsync.Entry, extra: Extra) {

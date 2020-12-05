@@ -15,27 +15,36 @@
 
     <string name="account_name_contacts">DecSync Contacts</string>
     <string name="account_name_calendars">DecSync Calendars</string>
+    <string name="account_name_tasks">DecSync Tasks</string>
     <string name="account_type_contacts" translatable="false">org.decsync.contacts</string>
     <string name="account_type_calendars" translatable="false">org.decsync.calendars</string>
+    <string name="account_type_tasks" translatable="false">org.decsync.tasks</string>
+    <string name="tasks_app_opentasks">OpenTasks</string>
+    <string name="tasks_app_tasks_org">Tasks</string>
 
     <!-- MainActivity -->
     <string name="account_contacts">Address books</string>
     <string name="account_contacts_unknown">Address books (unknown)</string>
     <string name="account_calendars">Calendars</string>
+    <string name="account_calendars_unknown">Calendars (unknown)</string>
+    <string name="account_task_lists">Task lists</string>
+    <string name="account_task_lists_unknown">Task lists (unknown)</string>
     <string name="account_synchronize_now">Synchronize now</string>
     <string name="account_synchronizing_now">Synchronizing now</string>
-    <string name="account_calendars_unknown">Calendars (unknown)</string>
     <string name="account_synchronize_this_collection">synchronize this collection</string>
     <string name="account_refresh_address_book_list">Refresh address book list</string>
     <string name="account_create_new_address_book">Create new address book</string>
     <string name="account_refresh_calendar_list">Refresh calendar list</string>
     <string name="account_create_new_calendar">Create new calendar</string>
     <string name="change_calendar_colors">Change calendar colors</string>
+    <string name="account_create_new_task_list">Create new task list</string>
     <string name="create_collection_title">Name for new collection</string>
     <string name="rename_collection">Rename collection</string>
     <string name="rename_collection_title">New name for collection</string>
     <string name="delete_collection">Delete collection</string>
     <string name="delete_collection_title">Are you sure you want to delete the collection \'%s\'?</string>
+    <string name="no_task_app_title">No task apps installed. Choose one to install.</string>
+    <string name="choose_task_app_title">Multiple task apps installed. Choose one to use.</string>
     <string name="entries_count">Entries count</string>
     <string name="entries_count_title">Entries count</string>
     <string name="entries_count_message">Android entries: %d\nProcessed entries: %d\nDecSync entries: %s</string>
@@ -44,6 +53,7 @@
     <!-- Notifications -->
     <string name="notification_adding_contacts">Adding contacts of %s</string>
     <string name="notification_adding_events">Adding events of %s</string>
+    <string name="notification_adding_tasks">Adding tasks of %s</string>
     <string name="notification_saf_update_title">New Android version</string>
     <string name="notification_saf_update_message">The DecSync directory needs to be reselected</string>
 
@@ -76,6 +86,16 @@
     <string name="settings_decsync_collections_enabled_title">Enabled collections</string>
     <string name="settings_decsync_collections_enabled_message">There are still some collections enabled. Disable all collections before changing the DecSync directory.</string>
     <string name="settings_decsync_dir_not_configured">No DecSync directory configured</string>
+    <string name="settings_category_tasks">Tasks</string>
+    <string name="settings_task_app">Task app</string>
+    <string-array name="settings_task_app_values" translatable="false">
+        <item />
+    </string-array>
+    <string-array name="settings_task_app_names">
+        <item>None</item>
+    </string-array>
+    <string name="settings_decsync_task_lists_enabled_title">Enabled task lists</string>
+    <string name="settings_decsync_task_lists_enabled_message">There are still some task lists enabled. Disable all task lists before changing the task app.</string>
     <string name="settings_category_theme">Theme</string>
     <string name="settings_theme">Theme</string>
     <string-array name="settings_theme_values" translatable="false">

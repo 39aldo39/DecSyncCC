@@ -97,9 +97,9 @@ class CalendarsService : Service() {
 
                     try {
                         val calendar = AndroidCalendar.findByID(account, provider, CalendarFactory, calendarId)
-                        val info = CollectionInfo(CollectionInfo.Type.CALENDAR, decsyncId, name, context)
+                        val info = CalendarInfo(decsyncId, name, null)
                         val extra = Extra(info, context, provider)
-                        val decsync = getDecsync(info)
+                        val decsync = getDecsync(info, context)
 
                         // Detect changed color
                         if (color != oldColor) {

@@ -28,6 +28,7 @@ import org.decsync.cc.calendars.CalendarDecsyncUtils
 import org.decsync.cc.contacts.ContactDecsyncUtils
 import org.decsync.cc.contacts.KEY_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.contacts.syncAdapterUri
+import org.decsync.cc.tasks.TasksDecsyncUtils
 import org.decsync.library.*
 
 @ExperimentalStdlibApi
@@ -38,16 +39,20 @@ class Extra(
 )
 
 @ExperimentalStdlibApi
-fun getDecsync(info: CollectionInfo): Decsync<Extra> {
-    val decsync = Decsync<Extra>(info.decsyncDir, info.syncType, info.collection, info.appId)
-    val infoListener = when (info.type) {
-        CollectionInfo.Type.ADDRESS_BOOK -> ContactDecsyncUtils::infoListener
-        CollectionInfo.Type.CALENDAR -> CalendarDecsyncUtils::infoListener
+fun getDecsync(info: CollectionInfo, context: Context): Decsync<Extra> {
+    val decsyncDir = PrefUtils.getNativeFile(context) ?: throw Exception(context.getString(R.string.settings_decsync_dir_not_configured))
+    val ownAppId = PrefUtils.getOwnAppId(context)
+    val decsync = Decsync<Extra>(decsyncDir, info.syncType, info.id, ownAppId)
+    val infoListener = when (info) {
+        is AddressBookInfo -> ContactDecsyncUtils::infoListener
+        is CalendarInfo -> CalendarDecsyncUtils::infoListener
+        is TaskListInfo -> TasksDecsyncUtils::infoListener
     }
     decsync.addListener(listOf("info"), infoListener)
-    val resourcesListener = when (info.type) {
-        CollectionInfo.Type.ADDRESS_BOOK -> ContactDecsyncUtils::resourcesListener
-        CollectionInfo.Type.CALENDAR -> CalendarDecsyncUtils::resourcesListener
+    val resourcesListener = when (info) {
+        is AddressBookInfo -> ContactDecsyncUtils::resourcesListener
+        is CalendarInfo -> CalendarDecsyncUtils::resourcesListener
+        is TaskListInfo -> TasksDecsyncUtils::resourcesListener
     }
     decsync.addListener(listOf("resources"), resourcesListener)
     return decsync
@@ -55,10 +60,12 @@ fun getDecsync(info: CollectionInfo): Decsync<Extra> {
 
 @ExperimentalStdlibApi
 fun addToNumProcessedEntries(extra: Extra, add: Int) {
-    when (extra.info.type) {
-        CollectionInfo.Type.ADDRESS_BOOK -> addToNumProcessedEntriesContacts(extra, add)
-        CollectionInfo.Type.CALENDAR -> addToNumProcessedEntriesCalendar(extra, add)
+    val addFunction = when (extra.info) {
+        is AddressBookInfo -> ::addToNumProcessedEntriesContacts
+        is CalendarInfo -> ::addToNumProcessedEntriesCalendar
+        is TaskListInfo -> ::addToNumProcessedEntriesTasks
     }
+    addFunction(extra, add)
 }
 
 @ExperimentalStdlibApi
@@ -84,11 +91,20 @@ private fun addToNumProcessedEntriesCalendar(extra: Extra, add: Int) {
 }
 
 @ExperimentalStdlibApi
+private fun addToNumProcessedEntriesTasks(extra: Extra, add: Int) {
+    val info = extra.info as TaskListInfo
+    val taskList = info.getTaskList(extra.context) ?: return
+    taskList.numProcessedEntries += add
+}
+
+@ExperimentalStdlibApi
 fun setNumProcessedEntries(extra: Extra, count: Int) {
-    when (extra.info.type) {
-        CollectionInfo.Type.ADDRESS_BOOK -> setNumProcessedEntriesContacts(extra, count)
-        CollectionInfo.Type.CALENDAR -> setNumProcessedEntriesCalendar(extra, count)
+    val setFunction = when (extra.info) {
+        is AddressBookInfo -> ::setNumProcessedEntriesContacts
+        is CalendarInfo -> ::setNumProcessedEntriesCalendar
+        is TaskListInfo -> ::setNumProcessedEntriesTasks
     }
+    setFunction(extra, count)
 }
 
 @ExperimentalStdlibApi
@@ -105,4 +121,11 @@ private fun setNumProcessedEntriesCalendar(extra: Extra, count: Int) {
     values.put(COLUMN_NUM_PROCESSED_ENTRIES, count)
     extra.provider.update(syncAdapterUri(account, CalendarContract.Calendars.CONTENT_URI),
             values, "${CalendarContract.Calendars.NAME}=?", arrayOf(extra.info.id))
+}
+
+@ExperimentalStdlibApi
+private fun setNumProcessedEntriesTasks(extra: Extra, count: Int) {
+    val info = extra.info as TaskListInfo
+    val taskList = info.getTaskList(extra.context) ?: return
+    taskList.numProcessedEntries = count
 }

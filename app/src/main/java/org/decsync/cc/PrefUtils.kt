@@ -28,6 +28,7 @@ import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import org.decsync.cc.calendars.CalendarsWorker
 import org.decsync.cc.contacts.ContactsWorker
+import org.decsync.cc.tasks.TasksWorker
 import org.decsync.library.*
 import java.io.File
 import java.util.*
@@ -46,7 +47,10 @@ object PrefUtils {
     const val OFFLINE_SYNC = "offline_sync"
     const val OFFLINE_SYNC_CALENDARS = "offline_sync.calendars"
     const val OFFLINE_SYNC_CONTACTS = "offline_sync.contacts"
+    const val OFFLINE_SYNC_TASKS = "offline_sync.tasks"
     const val CALENDAR_ACCOUNT_NAME = "calendar_account_name"
+    const val TASKS_ACCOUNT_NAME = "tasks_account_name"
+    const val TASKS_AUTHORITY = "tasks_authority"
 
     val currentAppVersion = 3
     val defaultDecsyncDir = "${Environment.getExternalStorageDirectory()}/DecSync"
@@ -163,8 +167,12 @@ object PrefUtils {
             val contactsWorkRequest = PeriodicWorkRequest.Builder(ContactsWorker::class.java, 1, TimeUnit.HOURS)
                     .addTag(OFFLINE_SYNC)
                     .build()
+            val tasksWorkRequest = PeriodicWorkRequest.Builder(TasksWorker::class.java, 1, TimeUnit.HOURS)
+                    .addTag(OFFLINE_SYNC)
+                    .build()
             workManager.enqueueUniquePeriodicWork(OFFLINE_SYNC_CALENDARS, ExistingPeriodicWorkPolicy.REPLACE, calendarsWorkRequest)
             workManager.enqueueUniquePeriodicWork(OFFLINE_SYNC_CONTACTS, ExistingPeriodicWorkPolicy.REPLACE, contactsWorkRequest)
+            workManager.enqueueUniquePeriodicWork(OFFLINE_SYNC_TASKS, ExistingPeriodicWorkPolicy.REPLACE, tasksWorkRequest)
         } else {
             workManager.cancelAllWorkByTag(OFFLINE_SYNC)
         }
@@ -182,6 +190,33 @@ object PrefUtils {
     fun putCalendarAccountName(context: Context, value: String) {
         val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
         editor.putString(CALENDAR_ACCOUNT_NAME, value)
+        editor.apply()
+    }
+
+    fun getTasksAccountName(context: Context): String {
+        val settings = PreferenceManager.getDefaultSharedPreferences(context)
+        return settings.getString(TASKS_ACCOUNT_NAME, null) ?: run {
+            context.getString(R.string.account_name_tasks).also { name ->
+                putTasksAccountName(context, name)
+            }
+        }
+    }
+
+    fun putTasksAccountName(context: Context, value: String) {
+        val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
+        editor.putString(TASKS_ACCOUNT_NAME, value)
+        editor.apply()
+    }
+
+    fun getTasksAuthority(context: Context): String? {
+        val settings = PreferenceManager.getDefaultSharedPreferences(context)
+        val result = settings.getString(TASKS_AUTHORITY, "")
+        return if (result.isNullOrEmpty()) null else result
+    }
+
+    fun putTasksAuthority(context: Context, value: String?) {
+        val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
+        editor.putString(TASKS_AUTHORITY, value ?: "")
         editor.apply()
     }
 

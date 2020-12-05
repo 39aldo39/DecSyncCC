@@ -79,9 +79,9 @@ class ContactsService : Service() {
 
             try {
                 val bookId = AccountManager.get(context).getUserData(account, "id")
-                val info = CollectionInfo(CollectionInfo.Type.ADDRESS_BOOK, bookId, account.name, context)
+                val info = AddressBookInfo(bookId, account.name)
                 val extra = Extra(info, context, provider)
-                val decsync = getDecsync(info)
+                val decsync = getDecsync(info, context)
                 val addressBook = AndroidAddressBook(account, provider, LocalContact.ContactFactory, LocalContact.GroupFactory)
 
                 // Detect deleted contacts
