@@ -61,6 +61,7 @@ class LocalContact: AndroidContact {
     }
 
     fun writeUpdateAction(decsync: Decsync<Extra>) {
+        val bookId = bookId // Populating the contact overwrites the bookId from the database
         val contact = requireNotNull(contact)
         val uid = uid ?: UUID.randomUUID().toString()
         contact.uid = uid
@@ -72,7 +73,7 @@ class LocalContact: AndroidContact {
 
         val values = ContentValues()
         values.put(COLUMN_LOCAL_UID, uid)
-        values.put(COLUMN_LOCAL_BOOKID, bookId)
+        values.put(COLUMN_LOCAL_BOOKID, bookId ?: this.bookId) // If we create a new contact, we need the given bookId
         values.put(RawContacts.DIRTY, 0)
         addressBook.provider!!.update(rawContactSyncURI(), values, null, null)
     }
