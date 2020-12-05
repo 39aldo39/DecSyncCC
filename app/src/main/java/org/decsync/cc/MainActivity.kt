@@ -36,7 +36,6 @@ import android.util.Log
 import android.view.*
 import android.widget.*
 import androidx.work.*
-import at.bitfire.ical4android.AndroidCalendar
 import at.bitfire.ical4android.AndroidTaskList
 import at.bitfire.ical4android.TaskProvider
 import com.google.android.material.snackbar.Snackbar
@@ -45,7 +44,6 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import org.decsync.cc.calendars.COLUMN_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.calendars.CalendarDecsyncUtils
-import org.decsync.cc.calendars.CalendarDecsyncUtils.addColor
 import org.decsync.cc.calendars.CalendarsInitWorker
 import org.decsync.cc.contacts.ContactDecsyncUtils
 import org.decsync.cc.contacts.ContactsInitWorker
@@ -161,19 +159,19 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
         // Adapters
         address_books.adapter = CollectionAdapter(this)
-        address_books.onItemClickListener = onAddressBookClickListener
+        address_books.onItemClickListener = onCollectionClickListener
 
         address_books_unknown.adapter = CollectionUnknownAdapter(this)
         address_books_unknown.onItemClickListener = onCollectionUnknownListener
 
         calendars.adapter = CollectionAdapter(this)
-        calendars.onItemClickListener = onCalendarClickListener
+        calendars.onItemClickListener = onCollectionClickListener
 
         calendars_unknown.adapter = CollectionUnknownAdapter(this)
         calendars_unknown.onItemClickListener = onCollectionUnknownListener
 
         task_lists.adapter = CollectionAdapter(this)
-        task_lists.onItemClickListener = onTaskListClickListener
+        task_lists.onItemClickListener = onCollectionClickListener
 
         task_lists_unknown.adapter = CollectionUnknownAdapter(this)
         task_lists_unknown.onItemClickListener = onCollectionUnknownListener
@@ -546,130 +544,16 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         return false
     }
 
-    private val onAddressBookClickListener = AdapterView.OnItemClickListener { parent, view, position, _ ->
-        if (!view.isEnabled)
-            return@OnItemClickListener
-
+    private val onCollectionClickListener = AdapterView.OnItemClickListener { parent, view, position, id ->
+        if (!view.isEnabled) return@OnItemClickListener
         val list = parent as ListView
-        val adapter = list.adapter as ArrayAdapter<AddressBookInfo>
+        val adapter = list.adapter as ArrayAdapter<CollectionInfo>
         val info = adapter.getItem(position)!!
         val nowChecked = !info.isEnabled(this)
 
-        val account = info.getAccount(this)
-        if (nowChecked) {
-            var permissions = emptyArray<String>()
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-                permissions += Manifest.permission.READ_CONTACTS
-            }
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
-                permissions += Manifest.permission.WRITE_CONTACTS
-            }
-            if (permissions.isNotEmpty()) {
-                val requestCode = min(PERMISSIONS_ADDRESS_BOOK_START + position, PERMISSIONS_ADDRESS_BOOK_END)
-                ActivityCompat.requestPermissions(this, permissions, requestCode)
-                return@OnItemClickListener
-            }
-            val bundle = Bundle()
-            bundle.putString("id", info.id)
-            AccountManager.get(this).addAccountExplicitly(account, null, bundle)
-            ContentResolver.setSyncAutomatically(account, ContactsContract.AUTHORITY, true)
-            ContentResolver.addPeriodicSync(account, ContactsContract.AUTHORITY, Bundle(), 60 * 60)
-            val inputData = Data.Builder()
-                    .putString(InitWorker.KEY_ID, info.id)
-                    .putString(InitWorker.KEY_NAME, info.name)
-                    .build()
-            val workRequest = OneTimeWorkRequest.Builder(ContactsInitWorker::class.java)
-                    .setInputData(inputData)
-                    .build()
-            WorkManager.getInstance(this).enqueueUniqueWork("${info.notificationId}", ExistingWorkPolicy.REPLACE, workRequest)
-        } else {
-            WorkManager.getInstance(this).cancelUniqueWork("${info.notificationId}")
-            if (Build.VERSION.SDK_INT >= 22) {
-                AccountManager.get(this).removeAccountExplicitly(account)
-            } else {
-                @Suppress("deprecation")
-                AccountManager.get(this).removeAccount(account, null, null)
-            }
-        }
-        adapter.notifyDataSetChanged()
-    }
-
-    private val onCalendarClickListener = AdapterView.OnItemClickListener { parent, view, position, _ ->
-        if (!view.isEnabled)
-            return@OnItemClickListener
-
-        val list = parent as ListView
-        val adapter = list.adapter as ArrayAdapter<CalendarInfo>
-        val info = adapter.getItem(position)!!
-        val nowChecked = !info.isEnabled(this)
-
-        val account = info.getAccount(this)
-        var permissions = emptyArray<String>()
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
-            permissions += Manifest.permission.READ_CALENDAR
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
-            permissions += Manifest.permission.WRITE_CALENDAR
-        }
-        if (permissions.isNotEmpty()) {
-            val requestCode = min(PERMISSIONS_CALENDAR_START + position, PERMISSIONS_CALENDAR_END)
-            ActivityCompat.requestPermissions(this, permissions, requestCode)
-            return@OnItemClickListener
-        }
-        contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
-            try {
-                if (nowChecked) {
-                    val values = ContentValues()
-                    values.put(Calendars.ACCOUNT_NAME, account.name)
-                    values.put(Calendars.ACCOUNT_TYPE, account.type)
-                    values.put(Calendars.OWNER_ACCOUNT, account.name)
-                    values.put(Calendars.VISIBLE, 1)
-                    values.put(Calendars.SYNC_EVENTS, 1)
-                    values.put(Calendars.CALENDAR_ACCESS_LEVEL, Calendars.CAL_ACCESS_OWNER)
-                    values.put(Calendars.NAME, info.id)
-                    values.put(Calendars.CALENDAR_DISPLAY_NAME, info.name)
-                    if (info.color != null) {
-                        addColor(values, info.color)
-                    }
-                    provider.insert(syncAdapterUri(account, Calendars.CONTENT_URI), values)
-                    AndroidCalendar.insertColors(provider, account) // Allow custom event colors
-
-                    val inputData = Data.Builder()
-                            .putString(InitWorker.KEY_ID, info.id)
-                            .putString(InitWorker.KEY_NAME, info.name)
-                            .build()
-                    val workRequest = OneTimeWorkRequest.Builder(CalendarsInitWorker::class.java)
-                            .setInputData(inputData)
-                            .build()
-                    WorkManager.getInstance(this).enqueueUniqueWork("${info.notificationId}", ExistingWorkPolicy.REPLACE, workRequest)
-                } else {
-                    WorkManager.getInstance(this).cancelUniqueWork("${info.notificationId}")
-                    provider.delete(syncAdapterUri(account, Calendars.CONTENT_URI),
-                            "${Calendars.NAME}=?", arrayOf(info.id))
-                }
-            } finally {
-                if (Build.VERSION.SDK_INT >= 24)
-                    provider.close()
-                else
-                    @Suppress("DEPRECATION")
-                    provider.release()
-            }
-        }
-        adapter.notifyDataSetChanged()
-    }
-
-    private val onTaskListClickListener = AdapterView.OnItemClickListener { parent, view, position, id ->
-        if (!view.isEnabled)
-            return@OnItemClickListener
-
-        val list = parent as ListView
-        val adapter = list.adapter as ArrayAdapter<TaskListInfo>
-        val info = adapter.getItem(position)!!
-        val nowChecked = !info.isEnabled(this)
-
-        val account = info.getAccount(this)
-        val providerName = when (val authority = PrefUtils.getTasksAuthority(this)) {
-            null -> {
+        if (info is TaskListInfo) {
+            val authority = PrefUtils.getTasksAuthority(this)
+            if (authority == null) {
                 val providerNames = mutableListOf<TaskProvider.ProviderName>()
                 for (providerName in Utils.TASK_PROVIDERS) {
                     try {
@@ -696,7 +580,10 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                 .show()
                         return@OnItemClickListener
                     }
-                    1 -> providerNames[0]
+                    1 -> {
+                        val providerName = providerNames[0]
+                        PrefUtils.putTasksAuthority(this, providerName.authority)
+                    }
                     else -> {
                         val names = providerNames.map { it.toString() }.toTypedArray()
                         var providerName: TaskProvider.ProviderName? = null
@@ -715,45 +602,45 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                 .show()
                         return@OnItemClickListener
                     }
-                }.also { providerName ->
-                    PrefUtils.putTasksAuthority(this, providerName.authority)
                 }
             }
-            else -> TaskProvider.ProviderName.fromAuthority(authority)
         }
-        var permissions = emptyArray<String>()
-        for (permission in providerName.permissions) {
+
+        val permissions = mutableListOf<String>()
+        for (permission in info.getPermissions(this)) {
             if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
-                permissions += permission
+                permissions.add(permission)
             }
         }
         if (permissions.isNotEmpty()) {
-            val requestCode = min(PERMISSIONS_TASK_LIST_START + position, PERMISSIONS_TASK_LIST_END)
-            ActivityCompat.requestPermissions(this, permissions, requestCode)
+            val (startIndex, endIndex) = when (info) {
+                is AddressBookInfo -> Pair(PERMISSIONS_ADDRESS_BOOK_START, PERMISSIONS_ADDRESS_BOOK_END)
+                is CalendarInfo -> Pair(PERMISSIONS_CALENDAR_START, PERMISSIONS_CALENDAR_END)
+                is TaskListInfo -> Pair(PERMISSIONS_TASK_LIST_START, PERMISSIONS_TASK_LIST_END)
+            }
+            val requestCode = min(startIndex + position, endIndex)
+            ActivityCompat.requestPermissions(this, permissions.toTypedArray(), requestCode)
             return@OnItemClickListener
         }
-        val success = AccountManager.get(this).addAccountExplicitly(account, null, null)
-        if (success) {
-            ContentResolver.setSyncAutomatically(account, providerName.authority, true)
-            ContentResolver.addPeriodicSync(account, providerName.authority, Bundle(), 60 * 60)
-        }
 
-        info.getProvider(this)?.use { provider ->
-            if (nowChecked) {
-                LocalTaskList.create(account, provider, info)
-
-                val inputData = Data.Builder()
-                        .putString(InitWorker.KEY_ID, info.id)
-                        .putString(InitWorker.KEY_NAME, info.name)
-                        .build()
-                val workRequest = OneTimeWorkRequest.Builder(TasksInitWorker::class.java)
-                        .setInputData(inputData)
-                        .build()
-                WorkManager.getInstance(this).enqueueUniqueWork("${info.notificationId}", ExistingWorkPolicy.REPLACE, workRequest)
-            } else {
-                WorkManager.getInstance(this).cancelUniqueWork("${info.notificationId}")
-                LocalTaskList.findBySyncId(account, provider, info.id)?.delete()
+        if (nowChecked) {
+            info.create(this)
+            val inputData = Data.Builder()
+                    .putString(InitWorker.KEY_ID, info.id)
+                    .putString(InitWorker.KEY_NAME, info.name)
+                    .build()
+            val workerClass = when (info) {
+                is AddressBookInfo -> ContactsInitWorker::class.java
+                is CalendarInfo -> CalendarsInitWorker::class.java
+                is TaskListInfo -> TasksInitWorker::class.java
             }
+            val workRequest = OneTimeWorkRequest.Builder(workerClass)
+                    .setInputData(inputData)
+                    .build()
+            WorkManager.getInstance(this).enqueueUniqueWork("${info.notificationId}", ExistingWorkPolicy.REPLACE, workRequest)
+        } else {
+            WorkManager.getInstance(this).cancelUniqueWork("${info.notificationId}")
+            info.remove(this)
         }
         adapter.notifyDataSetChanged()
     }

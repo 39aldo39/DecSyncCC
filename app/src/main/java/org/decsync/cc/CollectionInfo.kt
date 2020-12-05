@@ -22,14 +22,19 @@ import android.Manifest
 import android.accounts.Account
 import android.accounts.AccountManager
 import android.content.ContentProviderClient
+import android.content.ContentResolver
+import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Bundle
 import android.provider.CalendarContract
 import android.provider.CalendarContract.Calendars
 import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
+import at.bitfire.ical4android.AndroidCalendar
 import at.bitfire.ical4android.TaskProvider
+import org.decsync.cc.calendars.CalendarDecsyncUtils
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.cc.tasks.LocalTaskList
 
@@ -44,7 +49,9 @@ sealed class CollectionInfo (
     abstract fun getAccount(context: Context): Account
     abstract fun getProviderClient(context: Context): ContentProviderClient?
     abstract fun isEnabled(context: Context): Boolean
+    abstract fun create(context: Context)
     abstract fun remove(context: Context)
+    abstract fun getPermissions(context: Context): List<String>
 }
 
 class AddressBookInfo(id: String, name: String) :
@@ -68,6 +75,15 @@ class AddressBookInfo(id: String, name: String) :
         return AccountManager.get(context).getAccountsByType(account.type).any { it.name == account.name }
     }
 
+    override fun create(context: Context) {
+        val account = getAccount(context)
+        val bundle = Bundle()
+        bundle.putString("id", id)
+        AccountManager.get(context).addAccountExplicitly(account, null, bundle)
+        ContentResolver.setSyncAutomatically(account, ContactsContract.AUTHORITY, true)
+        ContentResolver.addPeriodicSync(account, ContactsContract.AUTHORITY, Bundle(), 60 * 60)
+    }
+
     override fun remove(context: Context) {
         val account = getAccount(context)
         if (Build.VERSION.SDK_INT >= 22) {
@@ -76,6 +92,13 @@ class AddressBookInfo(id: String, name: String) :
             @Suppress("deprecation")
             AccountManager.get(context).removeAccount(account, null, null)
         }
+    }
+
+    override fun getPermissions(context: Context): List<String> {
+        return listOf(
+                Manifest.permission.READ_CONTACTS,
+                Manifest.permission.WRITE_CONTACTS
+        )
     }
 }
 
@@ -99,7 +122,7 @@ class CalendarInfo(id: String, name: String, color: Int?) :
         val account = getAccount(context)
         var result = false
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED) {
-            context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
+            getProviderClient(context)?.let { provider ->
                 try {
                     provider.query(syncAdapterUri(account, Calendars.CONTENT_URI), emptyArray(),
                             "${Calendars.NAME}=?", arrayOf(id), null)?.use { cursor ->
@@ -119,9 +142,38 @@ class CalendarInfo(id: String, name: String, color: Int?) :
         return result
     }
 
+    @ExperimentalStdlibApi
+    override fun create(context: Context) {
+        val account = getAccount(context)
+        val values = ContentValues()
+        values.put(Calendars.ACCOUNT_NAME, account.name)
+        values.put(Calendars.ACCOUNT_TYPE, account.type)
+        values.put(Calendars.OWNER_ACCOUNT, account.name)
+        values.put(Calendars.VISIBLE, 1)
+        values.put(Calendars.SYNC_EVENTS, 1)
+        values.put(Calendars.CALENDAR_ACCESS_LEVEL, Calendars.CAL_ACCESS_OWNER)
+        values.put(Calendars.NAME, id)
+        values.put(Calendars.CALENDAR_DISPLAY_NAME, name)
+        if (color != null) {
+            CalendarDecsyncUtils.addColor(values, color)
+        }
+        getProviderClient(context)?.let { provider ->
+            try {
+                provider.insert(syncAdapterUri(account, Calendars.CONTENT_URI), values)
+                AndroidCalendar.insertColors(provider, account) // Allow custom event colors
+            } finally {
+                if (Build.VERSION.SDK_INT >= 24)
+                    provider.close()
+                else
+                    @Suppress("DEPRECATION")
+                    provider.release()
+            }
+        }
+    }
+
     override fun remove(context: Context) {
         val account = getAccount(context)
-        context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY)?.let { provider ->
+        getProviderClient(context)?.let { provider ->
             try {
                 provider.delete(syncAdapterUri(account, Calendars.CONTENT_URI),
                         "${Calendars.NAME}=?", arrayOf(id))
@@ -133,6 +185,13 @@ class CalendarInfo(id: String, name: String, color: Int?) :
                     provider.release()
             }
         }
+    }
+
+    override fun getPermissions(context: Context): List<String> {
+        return listOf(
+                Manifest.permission.READ_CALENDAR,
+                Manifest.permission.WRITE_CALENDAR
+        )
     }
 }
 
@@ -157,9 +216,33 @@ class TaskListInfo(id: String, name: String, color: Int?) :
         }
     }
 
-    fun getProvider(context: Context): TaskProvider? {
+    override fun create(context: Context) {
+        getProvider(context)?.use { provider ->
+            val account = getAccount(context)
+            val success = AccountManager.get(context).addAccountExplicitly(account, null, null)
+            if (success) {
+                val authority = provider.name.authority
+                ContentResolver.setSyncAutomatically(account, authority, true)
+                ContentResolver.addPeriodicSync(account, authority, Bundle(), 60 * 60)
+            }
+            LocalTaskList.create(account, provider, this)
+        }
+    }
+
+    override fun remove(context: Context) {
+        val account = getAccount(context)
+        getProvider(context)?.use { provider ->
+            LocalTaskList.findBySyncId(account, provider, id)?.delete()
+        }
+    }
+
+    fun getProviderName(context: Context): TaskProvider.ProviderName? {
         val authority = PrefUtils.getTasksAuthority(context) ?: return null
-        val providerName = TaskProvider.ProviderName.fromAuthority(authority)
+        return TaskProvider.ProviderName.fromAuthority(authority)
+    }
+
+    fun getProvider(context: Context): TaskProvider? {
+        val providerName = getProviderName(context)
         return TaskProvider.acquire(context, providerName)
     }
 
@@ -170,10 +253,8 @@ class TaskListInfo(id: String, name: String, color: Int?) :
         }
     }
 
-    override fun remove(context: Context) {
-        val account = getAccount(context)
-        getProvider(context)?.use { provider ->
-            LocalTaskList.findBySyncId(account, provider, id)?.delete()
-        }
+    override fun getPermissions(context: Context): List<String> {
+        val providerName = getProviderName(context) ?: return emptyList()
+        return providerName.permissions.toList()
     }
 }
