@@ -160,19 +160,19 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         }
 
         // Adapters
-        address_books.adapter = AddressBookAdapter(this)
+        address_books.adapter = CollectionAdapter(this)
         address_books.onItemClickListener = onAddressBookClickListener
 
         address_books_unknown.adapter = CollectionUnknownAdapter(this)
         address_books_unknown.onItemClickListener = onAddressBookUnknownClickListener
 
-        calendars.adapter = CalendarAdapter(this)
+        calendars.adapter = CollectionAdapter(this)
         calendars.onItemClickListener = onCalendarClickListener
 
         calendars_unknown.adapter = CollectionUnknownAdapter(this)
         calendars_unknown.onItemClickListener = onCalendarUnknownClickListener
 
-        task_lists.adapter = TaskListAdapter(this)
+        task_lists.adapter = CollectionAdapter(this)
         task_lists.onItemClickListener = onTaskListClickListener
 
         task_lists_unknown.adapter = CollectionUnknownAdapter(this)
@@ -222,7 +222,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         }
 
         CoroutineScope(Dispatchers.Main).launch {
-            val adapter = address_books.adapter as AddressBookAdapter
+            val adapter = address_books.adapter as CollectionAdapter
             adapter.clear()
             adapter.addAll(collectionInfos)
         }
@@ -263,7 +263,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         }
 
         CoroutineScope(Dispatchers.Main).launch {
-            val adapter = calendars.adapter as CalendarAdapter
+            val adapter = calendars.adapter as CollectionAdapter
             adapter.clear()
             adapter.addAll(collectionInfos)
         }
@@ -328,7 +328,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         }
 
         CoroutineScope(Dispatchers.Main).launch {
-            val adapter = task_lists.adapter as TaskListAdapter
+            val adapter = task_lists.adapter as CollectionAdapter
             adapter.clear()
             adapter.addAll(collectionInfos)
         }
@@ -980,65 +980,11 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
     /* LIST ADAPTERS */
 
-    class AddressBookAdapter(
+    class CollectionAdapter(
             context: Context
-    ): ArrayAdapter<AddressBookInfo>(context, R.layout.account_address_book_item) {
+    ): ArrayAdapter<CollectionInfo>(context, R.layout.account_item) {
         override fun getView(position: Int, v: View?, parent: ViewGroup): View {
-            val v = v ?: LayoutInflater.from(context).inflate(R.layout.account_address_book_item, parent, false)
-            val info = getItem(position)!!
-            val isChecked = info.isEnabled(context)
-
-            val checked = v.findViewById<CheckBox>(R.id.checked)
-            checked.isChecked = isChecked
-
-            val tv = v.findViewById<TextView>(R.id.title)
-            tv.text = info.name
-
-            v.findViewById<ImageView>(R.id.action_overflow).setOnClickListener { view ->
-                (context as? MainActivity)?.let {
-                    it.onActionOverflowListener(view, info)
-                }
-            }
-
-            return v
-        }
-    }
-
-    class CalendarAdapter(
-            context: Context
-    ): ArrayAdapter<CalendarInfo>(context, R.layout.account_calendar_item) {
-        override fun getView(position: Int, v: View?, parent: ViewGroup): View {
-            val v = v ?: LayoutInflater.from(context).inflate(R.layout.account_calendar_item, parent, false)
-            val info = getItem(position)!!
-            val isChecked = info.isEnabled(context)
-
-            val checked = v.findViewById<CheckBox>(R.id.checked)
-            checked.isChecked = isChecked
-
-            val vColor = v.findViewById<View>(R.id.color)
-            vColor.visibility = info.color?.let {
-                vColor.setBackgroundColor(it)
-                View.VISIBLE
-            } ?: View.INVISIBLE
-
-            val tv = v.findViewById<TextView>(R.id.title)
-            tv.text = info.name
-
-            v.findViewById<ImageView>(R.id.action_overflow).setOnClickListener { view ->
-                (context as? MainActivity)?.let {
-                    it.onActionOverflowListener(view, info)
-                }
-            }
-
-            return v
-        }
-    }
-
-    class TaskListAdapter(
-            context: Context
-    ): ArrayAdapter<TaskListInfo>(context, R.layout.account_calendar_item) {
-        override fun getView(position: Int, v: View?, parent: ViewGroup): View {
-            val v = v ?: LayoutInflater.from(context).inflate(R.layout.account_calendar_item, parent, false)
+            val v = v ?: LayoutInflater.from(context).inflate(R.layout.account_item, parent, false)
             val info = getItem(position)!!
             val isChecked = info.isEnabled(context)
 
