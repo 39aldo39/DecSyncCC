@@ -5,7 +5,7 @@ DecSync CC
       alt="Get it on F-Droid"
       height="80">](https://f-droid.org/app/org.decsync.cc)
 
-DecSync CC is an android application which synchronizes contacts and calendars using [DecSync](https://github.com/39aldo39/DecSync). To start synchronizing, all you have to do is synchronize your selected DecSync directory, using for example [Syncthing](https://syncthing.net). DecSync CC supports Android 5.0 or higher.
+DecSync CC is an android application which synchronizes contacts, calendars and tasks using [DecSync](https://github.com/39aldo39/DecSync). To start synchronizing, all you have to do is synchronize your selected DecSync directory, using for example [Syncthing](https://syncthing.net). DecSync CC supports Android 5.0 or higher.
 
 The UI is based on the one used in [DAVdroid](https://davdroid.com).
 
