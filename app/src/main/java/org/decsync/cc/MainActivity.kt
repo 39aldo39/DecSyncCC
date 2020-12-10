@@ -534,11 +534,18 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                         .show()
             }
             R.id.change_calendar_colors -> {
-                val intent = packageManager.getLaunchIntentForPackage("ch.ihdg.calendarcolor")
-                        ?: Intent(Intent.ACTION_VIEW).apply {
-                            data = Uri.parse("https://f-droid.org/app/ch.ihdg.calendarcolor")
+                val packageInFdroid = "ch.ihdg.calendarcolor"
+                val packageInPlay = "net.slintes.android.ccc.full"
+                val intent = Utils.launchIntent(this, packageInFdroid)
+                        ?: Utils.launchIntent(this, packageInPlay)
+                        ?: run {
+                            val fdroidInstalled = Utils.appInstalled(this, "org.fdroid.fdroid")
+                            val packageName = if (fdroidInstalled) packageInFdroid else packageInPlay
+                            Utils.installAppIntent(this, packageName)
                         }
-                startActivity(intent)
+                if (intent != null) {
+                    startActivity(intent)
+                }
             }
         }
         return false

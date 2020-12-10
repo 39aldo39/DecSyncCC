@@ -21,6 +21,7 @@
     <string name="account_type_tasks" translatable="false">org.decsync.tasks</string>
     <string name="tasks_app_opentasks">OpenTasks</string>
     <string name="tasks_app_tasks_org">Tasks</string>
+    <string name="no_app_store">No app store available</string>
 
     <!-- MainActivity -->
     <string name="account_contacts">Address books</string>

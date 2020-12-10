@@ -257,13 +257,11 @@ class GeneralPrefsActivity : AppCompatActivity() {
                 val authority = newValue as String
                 if (authority.isEmpty()) return@setOnPreferenceChangeListener true
                 val providerName = TaskProvider.ProviderName.fromAuthority(authority)
-                try {
-                    requireActivity().packageManager.getPackageInfo(providerName.packageName, 0)
-                    true
-                } catch (e: PackageManager.NameNotFoundException) {
+                val installed = Utils.appInstalled(requireActivity(), providerName.packageName)
+                if (!installed) {
                     Utils.installApp(requireActivity(), providerName.packageName)
-                    false
                 }
+                installed
             }
             preference.condition = {
                 !checkTaskListsEnabled()
