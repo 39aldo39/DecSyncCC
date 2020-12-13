@@ -12,12 +12,13 @@ import at.bitfire.ical4android.TaskProvider
 object Utils {
     private const val TAG = "Utils"
 
-    // tasks.org doesn't work yet
     val TASK_PROVIDERS = listOf(
-            TaskProvider.ProviderName.OpenTasks
+            TaskProvider.ProviderName.OpenTasks,
+            TaskProvider.ProviderName.TasksOrg
     )
     val TASK_PROVIDER_NAMES = listOf(
-            R.string.tasks_app_opentasks
+            R.string.tasks_app_opentasks,
+            R.string.tasks_app_tasks_org
     )
 
     fun launchIntent(activity: Activity, packageName: String): Intent? {
