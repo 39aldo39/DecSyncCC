@@ -91,7 +91,7 @@ open class TasksService : Service() {
                 }
 
                 // Detect dirty tasks
-                val dirtyTasks = taskList.queryTasks(TaskContract.Tasks.VERSION, null)
+                val dirtyTasks = taskList.queryTasks(TaskContract.Tasks._DIRTY, null)
                 for (task in dirtyTasks) {
                     task.writeUpdateAction(decsync)
                     val isNewTask = task.isNewTask
