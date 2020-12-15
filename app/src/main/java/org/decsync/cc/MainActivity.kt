@@ -568,20 +568,22 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
             val authority = PrefUtils.getTasksAuthority(this)
             if (authority == null) {
                 val providerNames = mutableListOf<TaskProvider.ProviderName>()
-                for (providerName in Utils.TASK_PROVIDERS) {
+                val names = mutableListOf<String>()
+                for ((providerName, name) in Utils.TASK_PROVIDERS.zip(Utils.TASK_PROVIDER_NAMES)) {
                     try {
                         packageManager.getPackageInfo(providerName.packageName, 0)
                         providerNames.add(providerName)
+                        names.add(getString(name))
                     } catch (e: PackageManager.NameNotFoundException) {
                     }
                 }
                 when (providerNames.size) {
                     0 -> {
-                        val names = Utils.TASK_PROVIDER_NAMES.map { getString(it) }.toTypedArray()
+                        val allNames = Utils.TASK_PROVIDER_NAMES.map { getString(it) }
                         var providerName: TaskProvider.ProviderName? = null
                         AlertDialog.Builder(this)
                                 .setTitle(R.string.no_task_app_title)
-                                .setSingleChoiceItems(names, -1) { _, which ->
+                                .setSingleChoiceItems(allNames.toTypedArray(), -1) { _, which ->
                                     providerName = Utils.TASK_PROVIDERS[which]
                                 }
                                 .setPositiveButton(android.R.string.ok) { _, _ ->
@@ -598,11 +600,10 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                         PrefUtils.putTasksAuthority(this, providerName.authority)
                     }
                     else -> {
-                        val names = providerNames.map { it.toString() }.toTypedArray()
                         var providerName: TaskProvider.ProviderName? = null
                         AlertDialog.Builder(this)
                                 .setTitle(R.string.choose_task_app_title)
-                                .setSingleChoiceItems(names, -1) { _, which ->
+                                .setSingleChoiceItems(names.toTypedArray(), -1) { _, which ->
                                     providerName = providerNames[which]
                                 }
                                 .setPositiveButton(android.R.string.ok) { _, _ ->
