@@ -56,6 +56,7 @@ class LocalTask: AndroidTask {
         decsync.setEntry(listOf("resources", uid), JsonNull, JsonPrimitive(ical))
 
         val values = ContentValues()
+        values.put(TaskContract.Tasks._SYNC_ID, uid)
         values.put(TaskContract.Tasks._UID, uid)
         values.put(TaskContract.Tasks._DIRTY, 0)
         taskList.provider.client.update(taskSyncURI(), values, null, null)
@@ -63,7 +64,10 @@ class LocalTask: AndroidTask {
 
     override fun buildTask(builder: BatchOperation.CpoBuilder, update: Boolean) {
         super.buildTask(builder, update)
-        builder.withValue(COLUMN_IS_NEW_TASK, 1)
+        val task = requireNotNull(task)
+
+        builder .withValue(COLUMN_IS_NEW_TASK, 1)
+                .withValue(TaskContract.Tasks._SYNC_ID, task.uid)
     }
 
     object Factory : AndroidTaskFactory<LocalTask> {
