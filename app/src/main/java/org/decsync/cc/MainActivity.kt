@@ -349,14 +349,14 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         val infos = mutableListOf<TaskListInfo>()
         val tasksAccount = Account(PrefUtils.getTasksAccountName(this), getString(R.string.account_type_tasks))
         val authority = PrefUtils.getTasksAuthority(this) ?: return emptyList()
+        val providerName = TaskProvider.ProviderName.fromAuthority(authority)
+        for (permission in providerName.permissions) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                return emptyList()
+            }
+        }
         contentResolver.acquireContentProviderClient(authority)?.let { provider ->
             try {
-                val providerName = TaskProvider.ProviderName.fromAuthority(authority)
-                for (permission in providerName.permissions) {
-                    if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
-                        return emptyList()
-                    }
-                }
                 val taskProvider = TaskProvider.fromProviderClient(this, providerName, provider)
                 val taskLists = AndroidTaskList.find(tasksAccount, taskProvider, LocalTaskList.Factory, null, null)
                 for (taskList in taskLists) {
