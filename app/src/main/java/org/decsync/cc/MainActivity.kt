@@ -207,6 +207,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     }
 
     private fun loadBooks(decsyncDir: NativeFile): List<String> {
+        Log.d(TAG, "Load address books")
         val decsyncIds = listDecsyncCollections(decsyncDir, "contacts")
         val collectionInfos = decsyncIds.mapNotNull { id ->
             val info = Decsync.getStaticInfo(decsyncDir, "contacts", id)
@@ -229,6 +230,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     }
 
     private fun loadBooksUnknown(decsyncIds: List<String>) {
+        Log.d(TAG, "Load unknown address books")
         val accountManager = AccountManager.get(this)
         val infos = accountManager.getAccountsByType(getString(R.string.account_type_contacts)).map { account ->
             val bookId = accountManager.getUserData(account, "id")
@@ -246,6 +248,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     }
 
     private fun loadCalendars(decsyncDir: NativeFile): List<String> {
+        Log.d(TAG, "Load calendars")
         val decsyncIds = listDecsyncCollections(decsyncDir, "calendars")
         val collectionInfos = decsyncIds.mapNotNull {
             val info = Decsync.getStaticInfo(decsyncDir, "calendars", it)
@@ -270,6 +273,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     }
 
     private fun loadCalendarsUnknown(decsyncIds: List<String>) {
+        Log.d(TAG, "Load unknown calendars")
         val calendarsAccount = Account(PrefUtils.getCalendarAccountName(this), getString(R.string.account_type_calendars))
         val infos = mutableListOf<CalendarInfo>()
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED) {
@@ -306,6 +310,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     }
 
     private fun loadTaskLists(decsyncDir: NativeFile): List<String> {
+        Log.d(TAG, "Load task lists")
         val decsyncIds = listDecsyncCollections(decsyncDir, "tasks")
         val collectionInfos = decsyncIds.mapNotNull {
             val info = Decsync.getStaticInfo(decsyncDir, "tasks", it)
@@ -335,6 +340,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     }
 
     private fun loadTaskListsUnknown(decsyncIds: List<String>) {
+        Log.d(TAG, "Load unknown task lists")
         val idAndNames = getUnknownTasks(decsyncIds)
 
         CoroutineScope(Dispatchers.Main).launch {
@@ -478,12 +484,12 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                         .setView(input)
                         .setPositiveButton(android.R.string.ok) { _, _ ->
                             val name = input.text.toString()
-                            if (!name.isBlank()) {
+                            if (name.isNotBlank()) {
                                 val id = "colID%05d".format(Random().nextInt(100000))
                                 val info = AddressBookInfo(id, name)
-                                val decsync = getDecsync(info, this)
-                                decsync.setEntry(listOf("info"), JsonPrimitive("name"), JsonPrimitive(name))
-                                loadBooks(decsyncDir)
+                                GlobalScope.launch {
+                                    setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
+                                }
                             }
                         }
                         .setNegativeButton(android.R.string.cancel) { _, _ -> }
@@ -500,12 +506,12 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                         .setView(input)
                         .setPositiveButton(android.R.string.ok) { _, _ ->
                             val name = input.text.toString()
-                            if (!name.isBlank()) {
+                            if (name.isNotBlank()) {
                                 val id = "colID%05d".format(Random().nextInt(100000))
                                 val info = CalendarInfo(id, name, null)
-                                val decsync = getDecsync(info, this)
-                                decsync.setEntry(listOf("info"), JsonPrimitive("name"), JsonPrimitive(name))
-                                loadCalendars(decsyncDir)
+                                GlobalScope.launch {
+                                    setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
+                                }
                             }
                         }
                         .setNegativeButton(android.R.string.cancel) { _, _ -> }
@@ -522,12 +528,12 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                         .setView(input)
                         .setPositiveButton(android.R.string.ok) { _, _ ->
                             val name = input.text.toString()
-                            if (!name.isBlank()) {
+                            if (name.isNotBlank()) {
                                 val id = "colID%05d".format(Random().nextInt(100000))
                                 val info = TaskListInfo(id, name, null)
-                                val decsync = getDecsync(info, this)
-                                decsync.setEntry(listOf("info"), JsonPrimitive("name"), JsonPrimitive(name))
-                                loadTaskLists(decsyncDir)
+                                GlobalScope.launch {
+                                    setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
+                                }
                             }
                         }
                         .setNegativeButton(android.R.string.cancel) { _, _ -> }
@@ -676,7 +682,9 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             .setPositiveButton(android.R.string.ok) { _, _ ->
                                 val name = input.text.toString()
                                 if (!name.isBlank() && name != info.name) {
-                                    setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
+                                    GlobalScope.launch {
+                                        setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
+                                    }
                                 }
                             }
                             .setNegativeButton(android.R.string.cancel) { _, _ -> }
@@ -686,7 +694,9 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     AlertDialog.Builder(this)
                             .setTitle(getString(R.string.delete_collection_title, info.name))
                             .setPositiveButton(android.R.string.yes) { _, _ ->
-                                setCollectionInfo(info, JsonPrimitive("deleted"), JsonPrimitive(true))
+                                GlobalScope.launch {
+                                    setCollectionInfo(info, JsonPrimitive("deleted"), JsonPrimitive(true))
+                                }
                             }
                             .setNegativeButton(android.R.string.no) { _, _ -> }
                             .show()
@@ -783,22 +793,24 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     private fun setCollectionInfo(info: CollectionInfo, key: JsonElement, value: JsonElement) {
         Log.d(TAG, "Set info for ${info.id} of key $key to value $value")
         val decsyncDir = decsyncDir ?: return
-        getDecsync(info, this).setEntry(listOf("info"), key, value)
-        info.getProviderClient(this)?.let { provider ->
-            try {
-                val extra = Extra(info, this, provider)
-                val infoListener = when (info) {
-                    is AddressBookInfo -> ContactDecsyncUtils::infoListener
-                    is CalendarInfo -> CalendarDecsyncUtils::infoListener
-                    is TaskListInfo -> TasksDecsyncUtils::infoListener
+        getDecsync(info, this, decsyncDir).setEntry(listOf("info"), key, value)
+        if (info.isEnabled(this)) {
+            info.getProviderClient(this)?.let { provider ->
+                try {
+                    val extra = Extra(info, this, provider)
+                    val infoListener = when (info) {
+                        is AddressBookInfo -> ContactDecsyncUtils::infoListener
+                        is CalendarInfo -> CalendarDecsyncUtils::infoListener
+                        is TaskListInfo -> TasksDecsyncUtils::infoListener
+                    }
+                    infoListener(emptyList(), Decsync.Entry(key, value), extra)
+                } finally {
+                    if (Build.VERSION.SDK_INT >= 24)
+                        provider.close()
+                    else
+                        @Suppress("DEPRECATION")
+                        provider.release()
                 }
-                infoListener(emptyList(), Decsync.Entry(key, value), extra)
-            } finally {
-                if (Build.VERSION.SDK_INT >= 24)
-                    provider.close()
-                else
-                    @Suppress("DEPRECATION")
-                    provider.release()
             }
         }
         val loadCollections = when (info) {
