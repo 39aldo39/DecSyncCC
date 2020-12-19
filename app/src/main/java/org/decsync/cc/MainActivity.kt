@@ -545,9 +545,11 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                 val intent = Utils.launchIntent(this, packageInFdroid)
                         ?: Utils.launchIntent(this, packageInPlay)
                         ?: run {
-                            val fdroidInstalled = Utils.appInstalled(this, "org.fdroid.fdroid")
-                            val packageName = if (fdroidInstalled) packageInFdroid else packageInPlay
-                            Utils.installAppIntent(this, packageName)
+                            if (Utils.appInstalled(this, "org.fdroid.fdroid")) {
+                                Utils.installAppIntent(this, packageInFdroid, true)
+                            } else {
+                                Utils.installAppIntent(this, packageInPlay)
+                            }
                         }
                 if (intent != null) {
                     startActivity(intent)

@@ -39,9 +39,15 @@ object Utils {
         activity.startActivity(intent)
     }
 
-    fun installAppIntent(activity: Activity, packageName: String): Intent? {
+    fun installAppIntent(activity: Activity, packageName: String, onlyOnFdroid: Boolean = false): Intent? {
         val intent = Intent(Intent.ACTION_VIEW)
-        intent.data = Uri.parse("market://details?id=$packageName")
+        intent.data = Uri.parse(
+                if (onlyOnFdroid) {
+                    "https://f-droid.org/app/$packageName"
+                } else {
+                    "market://details?id=$packageName"
+                }
+        )
         if (intent.resolveActivity(activity.packageManager) == null) {
             Toast.makeText(activity, R.string.no_app_store, Toast.LENGTH_SHORT).show()
             return null
