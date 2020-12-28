@@ -771,7 +771,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     val countJob = GlobalScope.launch {
                         class Count(var count: Int)
 
-                        val decsyncDir = decsyncDir
+                        val decsyncDir = PrefUtils.getNativeFile(this@MainActivity)
                         val decsyncCount = if (decsyncDir != null) {
                             val latestAppId = getDecsync(info, this@MainActivity, decsyncDir).latestAppId()
                             val countDecsync = Decsync<Count>(decsyncDir, info.syncType, info.id, latestAppId)
