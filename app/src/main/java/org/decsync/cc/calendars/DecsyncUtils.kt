@@ -57,6 +57,7 @@ object CalendarDecsyncUtils {
             }
             "name" -> {
                 val name = entry.value.jsonPrimitive.content
+                if (extra.info.name == name) return
                 Log.d(TAG, "Rename calendar ${extra.info.name} to $name")
 
                 val values = ContentValues()
@@ -111,7 +112,7 @@ object CalendarDecsyncUtils {
         when (ical) {
             null -> {
                 if (id == null) {
-                    Log.w(TAG, "Unknown event $uid cannot be deleted")
+                    Log.i(TAG, "Unknown event $uid cannot be deleted")
                 } else {
                     Log.d(TAG, "Delete event $uid")
                     val values = ContentValues()
@@ -141,7 +142,7 @@ object CalendarDecsyncUtils {
                     LocalEvent(calendar, event).add()
                     addToNumProcessedEntries(extra, 1)
                 } else {
-                    Log.i(TAG, "Update event $uid")
+                    Log.d(TAG, "Update event $uid")
                     val values = ContentValues()
                     values.put(Events._ID, id)
                     LocalEvent(calendar, values).update(event)

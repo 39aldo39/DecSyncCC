@@ -30,6 +30,7 @@ import android.os.IBinder
 import android.provider.CalendarContract
 import android.provider.CalendarContract.Calendars
 import android.provider.CalendarContract.Events
+import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.work.Worker
@@ -85,21 +86,23 @@ class CalendarsService : Service() {
             // Allow custom event colors
             AndroidCalendar.insertColors(provider, account)
 
-            provider.query(syncAdapterUri(account, Calendars.CONTENT_URI),
-                    arrayOf(Calendars._ID, Calendars.NAME, Calendars.CALENDAR_DISPLAY_NAME, Calendars.CALENDAR_COLOR, COLUMN_OLD_COLOR),
-                    null, null, null)!!.use { calCursor ->
-                while (calCursor.moveToNext()) {
-                    val calendarId = calCursor.getLong(0)
-                    val decsyncId = calCursor.getString(1)
-                    val name = calCursor.getString(2)
-                    val color = calCursor.getInt(3)
-                    val oldColor = calCursor.getInt(4)
+            try {
+                val decsyncDir = PrefUtils.getNativeFile(context)
+                        ?: throw Exception(context.getString(R.string.settings_decsync_dir_not_configured))
+                provider.query(syncAdapterUri(account, Calendars.CONTENT_URI),
+                        arrayOf(Calendars._ID, Calendars.NAME, Calendars.CALENDAR_DISPLAY_NAME, Calendars.CALENDAR_COLOR, COLUMN_OLD_COLOR),
+                        null, null, null)!!.use { calCursor ->
+                    while (calCursor.moveToNext()) {
+                        val calendarId = calCursor.getLong(0)
+                        val decsyncId = calCursor.getString(1)
+                        val name = calCursor.getString(2)
+                        val color = calCursor.getInt(3)
+                        val oldColor = calCursor.getInt(4)
 
-                    try {
                         val calendar = AndroidCalendar.findByID(account, provider, CalendarFactory, calendarId)
                         val info = CalendarInfo(decsyncId, name, null)
                         val extra = Extra(info, context, provider)
-                        val decsync = getDecsync(info, context)
+                        val decsync = getDecsync(info, context, decsyncDir)
 
                         // Detect changed color
                         if (color != oldColor) {
@@ -144,25 +147,26 @@ class CalendarsService : Service() {
                         }
 
                         decsync.executeAllNewEntries(extra)
-                    } catch (e: Exception) {
-                        val builder = errorNotificationBuilder(context).apply {
-                            setSmallIcon(R.drawable.ic_notification)
-                            if (PrefUtils.getUpdateForcesSaf(context)) {
-                                setContentTitle(context.getString(R.string.notification_saf_update_title))
-                                setContentText(context.getString(R.string.notification_saf_update_message))
-                            } else {
-                                setContentTitle("DecSync")
-                                setContentText(e.message)
-                            }
-                            setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), 0))
-                            setAutoCancel(true)
-                        }
-                        with(NotificationManagerCompat.from(context)) {
-                            notify(0, builder.build())
-                        }
-                        return false
                     }
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "", e)
+                val builder = errorNotificationBuilder(context).apply {
+                    setSmallIcon(R.drawable.ic_notification)
+                    if (PrefUtils.getUpdateForcesSaf(context)) {
+                        setContentTitle(context.getString(R.string.notification_saf_update_title))
+                        setContentText(context.getString(R.string.notification_saf_update_message))
+                    } else {
+                        setContentTitle("DecSync")
+                        setContentText(e.message)
+                    }
+                    setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), 0))
+                    setAutoCancel(true)
+                }
+                with(NotificationManagerCompat.from(context)) {
+                    notify(0, builder.build())
+                }
+                return false
             }
 
             return true

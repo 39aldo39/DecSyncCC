@@ -26,7 +26,8 @@ abstract class InitWorker(val context: Context, params: WorkerParameters) : Coro
 
         val provider = info.getProviderClient(context) ?: return Result.failure()
         try {
-            val decsync = getDecsync(info, context)
+            val decsyncDir = PrefUtils.getNativeFile(context) ?: return Result.failure()
+            val decsync = getDecsync(info, context, decsyncDir)
             val extra = Extra(info, context, provider)
             setNumProcessedEntries(extra, 0)
             decsync.initStoredEntries()

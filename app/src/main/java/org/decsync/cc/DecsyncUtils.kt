@@ -39,8 +39,7 @@ class Extra(
 )
 
 @ExperimentalStdlibApi
-fun getDecsync(info: CollectionInfo, context: Context, decsyncDir_: NativeFile? = null): Decsync<Extra> {
-    val decsyncDir = decsyncDir_ ?: PrefUtils.getNativeFile(context) ?: throw Exception(context.getString(R.string.settings_decsync_dir_not_configured))
+fun getDecsync(info: CollectionInfo, context: Context, decsyncDir: NativeFile): Decsync<Extra> {
     val ownAppId = PrefUtils.getOwnAppId(context)
     val decsync = Decsync<Extra>(decsyncDir, info.syncType, info.id, ownAppId)
     val infoListener = when (info) {

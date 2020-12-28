@@ -70,6 +70,7 @@ object ContactDecsyncUtils {
             }
             "name" -> {
                 val name = entry.value.jsonPrimitive.content
+                if (extra.info.name == name) return
                 Log.d(TAG, "Rename address book ${extra.info.name} to $name")
 
                 // It is possible to temporarily have 2 accounts with the same name, since the names may be swapped
@@ -128,7 +129,7 @@ object ContactDecsyncUtils {
         when (vcard) {
             null -> {
                 if (id == null) {
-                    Log.w(TAG, "Unknown contact $uid cannot be deleted")
+                    Log.i(TAG, "Unknown contact $uid cannot be deleted")
                 } else {
                     Log.d(TAG, "Delete contact $uid")
                     val values = ContentValues()

@@ -684,7 +684,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             .setView(input)
                             .setPositiveButton(android.R.string.ok) { _, _ ->
                                 val name = input.text.toString()
-                                if (!name.isBlank() && name != info.name) {
+                                if (name.isNotBlank() && name != info.name) {
                                     GlobalScope.launch {
                                         setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
                                     }
@@ -771,9 +771,9 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     val countJob = GlobalScope.launch {
                         class Count(var count: Int)
 
-                        val latestAppId = getDecsync(info, this@MainActivity).latestAppId()
                         val decsyncDir = decsyncDir
                         val decsyncCount = if (decsyncDir != null) {
+                            val latestAppId = getDecsync(info, this@MainActivity, decsyncDir).latestAppId()
                             val countDecsync = Decsync<Count>(decsyncDir, info.syncType, info.id, latestAppId)
                             countDecsync.addListener(emptyList()) { _, entry, count ->
                                 if (!isActive) throw CancellationException()

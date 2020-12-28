@@ -31,6 +31,7 @@ import android.os.Bundle
 import android.os.IBinder
 import android.provider.ContactsContract
 import android.provider.ContactsContract.RawContacts
+import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.work.Worker
@@ -81,7 +82,9 @@ class ContactsService : Service() {
                 val bookId = AccountManager.get(context).getUserData(account, "id")
                 val info = AddressBookInfo(bookId, account.name)
                 val extra = Extra(info, context, provider)
-                val decsync = getDecsync(info, context)
+                val decsyncDir = PrefUtils.getNativeFile(context)
+                        ?: throw Exception(context.getString(R.string.settings_decsync_dir_not_configured))
+                val decsync = getDecsync(info, context, decsyncDir)
                 val addressBook = AndroidAddressBook(account, provider, LocalContact.ContactFactory, LocalContact.GroupFactory)
 
                 // Detect deleted contacts
@@ -123,6 +126,7 @@ class ContactsService : Service() {
 
                 decsync.executeAllNewEntries(extra)
             } catch (e: Exception) {
+                Log.e(TAG, "", e)
                 val builder = errorNotificationBuilder(context).apply {
                     setSmallIcon(R.drawable.ic_notification)
                     if (PrefUtils.getUpdateForcesSaf(context)) {
