@@ -707,82 +707,92 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                 R.id.entries_count -> {
                     var androidEntries = 0
                     var processedEntries = 0
-                    info.getProviderClient(this)?.let { provider ->
-                        try {
-                            when (info) {
-                                is AddressBookInfo -> {
-                                    processedEntries = AccountManager.get(this).getUserData(info.getAccount(this), KEY_NUM_PROCESSED_ENTRIES)?.toInt()
-                                            ?: 0
-                                    provider.query(syncAdapterUri(info.getAccount(this), RawContacts.CONTENT_URI),
-                                            emptyArray(), "${RawContacts.DELETED}=0",
-                                            null, null)!!.use { cursor ->
-                                        androidEntries = cursor.count
-                                    }
-                                }
-                                is CalendarInfo -> {
-                                    val calendarId = provider.query(syncAdapterUri(info.getAccount(this), Calendars.CONTENT_URI),
-                                            arrayOf(Calendars._ID, COLUMN_NUM_PROCESSED_ENTRIES), "${Calendars.NAME}=?",
-                                            arrayOf(info.id), null)!!.use { calCursor ->
-                                        if (calCursor.moveToFirst()) {
-                                            processedEntries = if (calCursor.isNull(1)) 0 else calCursor.getInt(1)
-                                            calCursor.getLong(0)
-                                        } else {
-                                            null
+
+                    val permissions = mutableListOf<String>()
+                    for (permission in info.getPermissions(this)) {
+                        if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                            permissions.add(permission)
+                        }
+                    }
+                    if (permissions.isEmpty()) {
+                        info.getProviderClient(this)?.let { provider ->
+                            try {
+                                when (info) {
+                                    is AddressBookInfo -> {
+                                        processedEntries = AccountManager.get(this).getUserData(info.getAccount(this), KEY_NUM_PROCESSED_ENTRIES)?.toInt()
+                                                ?: 0
+                                        provider.query(syncAdapterUri(info.getAccount(this), RawContacts.CONTENT_URI),
+                                                emptyArray(), "${RawContacts.DELETED}=0",
+                                                null, null)!!.use { cursor ->
+                                            androidEntries = cursor.count
                                         }
                                     }
-                                    provider.query(syncAdapterUri(info.getAccount(this), Events.CONTENT_URI),
-                                            emptyArray(), "${Events.CALENDAR_ID}=? AND ${Events.ORIGINAL_ID} IS NULL AND ${Events.DELETED}=0",
-                                            arrayOf(calendarId.toString()), null)!!.use { cursor ->
-                                        androidEntries = cursor.count
+                                    is CalendarInfo -> {
+                                        val calendarId = provider.query(syncAdapterUri(info.getAccount(this), Calendars.CONTENT_URI),
+                                                arrayOf(Calendars._ID, COLUMN_NUM_PROCESSED_ENTRIES), "${Calendars.NAME}=?",
+                                                arrayOf(info.id), null)!!.use { calCursor ->
+                                            if (calCursor.moveToFirst()) {
+                                                processedEntries = if (calCursor.isNull(1)) 0 else calCursor.getInt(1)
+                                                calCursor.getLong(0)
+                                            } else {
+                                                null
+                                            }
+                                        }
+                                        provider.query(syncAdapterUri(info.getAccount(this), Events.CONTENT_URI),
+                                                emptyArray(), "${Events.CALENDAR_ID}=? AND ${Events.ORIGINAL_ID} IS NULL AND ${Events.DELETED}=0",
+                                                arrayOf(calendarId.toString()), null)!!.use { cursor ->
+                                            androidEntries = cursor.count
+                                        }
+                                    }
+                                    is TaskListInfo -> {
+                                        val taskList = info.getTaskList(this)
+                                        processedEntries = taskList?.numProcessedEntries ?: 0
+                                        androidEntries = taskList?.queryTasks("${TaskContract.Tasks._DELETED}=0", null)?.size
+                                                ?: 0
                                     }
                                 }
-                                is TaskListInfo -> {
-                                    val taskList = info.getTaskList(this)
-                                    processedEntries = taskList?.numProcessedEntries ?: 0
-                                    androidEntries = taskList?.queryTasks("${TaskContract.Tasks._DELETED}=0", null)?.size ?: 0
-                                }
+                            } finally {
+                                if (Build.VERSION.SDK_INT >= 24)
+                                    provider.close()
+                                else
+                                    @Suppress("DEPRECATION")
+                                    provider.release()
                             }
-                        } finally {
-                            if (Build.VERSION.SDK_INT >= 24)
-                                provider.close()
-                            else
-                                @Suppress("DEPRECATION")
-                                provider.release()
                         }
-
-                        val dialog = AlertDialog.Builder(this)
-                                .setTitle(R.string.entries_count_title)
-                                .setMessage(getString(R.string.entries_count_message, androidEntries, processedEntries, "…"))
-                                .setNeutralButton(android.R.string.ok) { dialog, _ ->
-                                    dialog.dismiss()
-                                }
-                                .create()
-                        val countJob = GlobalScope.launch {
-                            class Count(var count: Int)
-
-                            val latestAppId = getDecsync(info, this@MainActivity).latestAppId()
-                            val decsyncDir = decsyncDir
-                            val decsyncCount = if (decsyncDir != null) {
-                                val countDecsync = Decsync<Count>(decsyncDir, info.syncType, info.id, latestAppId)
-                                countDecsync.addListener(emptyList()) { _, entry, count ->
-                                    if (!isActive) throw CancellationException()
-                                    if (entry.value !is JsonNull) {
-                                        count.count++
-                                    }
-                                }
-                                val count = Count(0)
-                                countDecsync.executeStoredEntriesForPathPrefix(listOf("resources"), count)
-                                "%d".format(count.count)
-                            } else {
-                                "-"
-                            }
-                            dialog.setMessage(getString(R.string.entries_count_message, androidEntries, processedEntries, decsyncCount))
-                        }
-                        dialog.setOnDismissListener {
-                            countJob.cancel()
-                        }
-                        dialog.show()
                     }
+
+                    val dialog = AlertDialog.Builder(this)
+                            .setTitle(R.string.entries_count_title)
+                            .setMessage(getString(R.string.entries_count_message, androidEntries, processedEntries, "…"))
+                            .setNeutralButton(android.R.string.ok) { dialog, _ ->
+                                dialog.dismiss()
+                            }
+                            .create()
+                    val countJob = GlobalScope.launch {
+                        class Count(var count: Int)
+
+                        val latestAppId = getDecsync(info, this@MainActivity).latestAppId()
+                        val decsyncDir = decsyncDir
+                        val decsyncCount = if (decsyncDir != null) {
+                            val countDecsync = Decsync<Count>(decsyncDir, info.syncType, info.id, latestAppId)
+                            countDecsync.addListener(emptyList()) { _, entry, count ->
+                                if (!isActive) throw CancellationException()
+                                if (entry.value !is JsonNull) {
+                                    count.count++
+                                }
+                            }
+                            val count = Count(0)
+                            countDecsync.executeStoredEntriesForPathPrefix(listOf("resources"), count)
+                            "%d".format(count.count)
+                        } else {
+                            "-"
+                        }
+                        dialog.setMessage(getString(R.string.entries_count_message, androidEntries, processedEntries, decsyncCount))
+                    }
+                    dialog.setOnDismissListener {
+                        countJob.cancel()
+                    }
+                    dialog.show()
                 }
             }
             true
