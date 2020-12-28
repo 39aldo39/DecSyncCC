@@ -510,7 +510,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                         .setPositiveButton(android.R.string.ok) { _, _ ->
                             val name = input.text.toString()
                             if (name.isNotBlank()) {
-                                val id = "colID%05d".format(Random().nextInt(100000))
+                                val id = UUID.randomUUID().toString()
                                 val info = AddressBookInfo(id, name)
                                 GlobalScope.launch {
                                     setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
@@ -538,7 +538,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                     lightnessSliderOnly()
                                     setPositiveButton(android.R.string.ok) { _, color, _ ->
                                         GlobalScope.launch {
-                                            val id = "colID%05d".format(Random().nextInt(100000))
+                                            val id = UUID.randomUUID().toString()
                                             val info = CalendarInfo(id, name, color)
                                             setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
                                             setCollectionInfo(info, JsonPrimitive("color"), JsonPrimitive(Utils.colorToString(color)))
@@ -569,7 +569,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                     lightnessSliderOnly()
                                     setPositiveButton(android.R.string.ok) { _, color, _ ->
                                         GlobalScope.launch {
-                                            val id = "colID%05d".format(Random().nextInt(100000))
+                                            val id = UUID.randomUUID().toString()
                                             val info = TaskListInfo(id, name, color)
                                             setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
                                             setCollectionInfo(info, JsonPrimitive("color"), JsonPrimitive(Utils.colorToString(color)))
