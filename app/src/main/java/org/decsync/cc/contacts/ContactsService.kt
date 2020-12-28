@@ -21,6 +21,7 @@ package org.decsync.cc.contacts
 import android.Manifest
 import android.accounts.Account
 import android.accounts.AccountManager
+import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
 import android.content.*
@@ -34,9 +35,11 @@ import android.provider.ContactsContract.RawContacts
 import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import androidx.work.Worker
+import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import at.bitfire.vcard4android.AndroidAddressBook
+import kotlinx.coroutines.runBlocking
 import org.decsync.cc.*
 
 class ContactsService : Service() {
@@ -57,16 +60,18 @@ class ContactsService : Service() {
         override fun onPerformSync(account: Account, extras: Bundle,
                                    authority: String, provider: ContentProviderClient,
                                    syncResult: SyncResult) {
-            val success = sync(context, account, provider)
-            if (!success) {
-                syncResult.databaseError = true
+            runBlocking {
+                val success = sync(context, account, provider, ::startForeground)
+                if (!success) {
+                    syncResult.databaseError = true
+                }
             }
         }
     }
 
     companion object {
         @ExperimentalStdlibApi
-        fun sync(context: Context, account: Account, provider: ContentProviderClient): Boolean {
+        suspend fun sync(context: Context, account: Account, provider: ContentProviderClient, startForeground: suspend (Int, Notification) -> Unit): Boolean {
             if (!PrefUtils.getUseSaf(context) &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 return false
@@ -87,44 +92,60 @@ class ContactsService : Service() {
                 val decsync = getDecsync(info, context, decsyncDir)
                 val addressBook = AndroidAddressBook(account, provider, LocalContact.ContactFactory, LocalContact.GroupFactory)
 
-                // Detect deleted contacts
-                provider.query(syncAdapterUri(account, RawContacts.CONTENT_URI),
-                        arrayOf(RawContacts._ID, LocalContact.COLUMN_LOCAL_UID),
-                        "${RawContacts.DELETED}=1", null, null
-                )!!.use { cursor ->
-                    while (cursor.moveToNext()) {
-                        val id = cursor.getString(0)
-                        val uid = cursor.getString(1)
+                val accountManager = AccountManager.get(context)
+                val isInitSyncKey = PrefUtils.IS_INIT_SYNC
+                val isInitSync = accountManager.getUserData(account, isInitSyncKey) == "1"
+                if (isInitSync) {
+                    val notification = initSyncNotificationBuilder(context).apply {
+                        setSmallIcon(R.drawable.ic_notification)
+                        setContentTitle(context.getString(R.string.notification_adding_contacts, info.name))
+                    }.build()
+                    startForeground(info.notificationId, notification)
 
-                        val values = ContentValues()
-                        values.put(RawContacts._ID, id)
-                        values.put(LocalContact.COLUMN_LOCAL_UID, uid)
-                        LocalContact(addressBook, values).writeDeleteAction(decsync)
-                        addToNumProcessedEntries(extra, -1)
-                    }
-                }
+                    setNumProcessedEntries(extra, 0)
+                    decsync.initStoredEntries()
+                    decsync.executeStoredEntriesForPathPrefix(listOf("resources"), extra)
+                    accountManager.setUserData(account, isInitSyncKey, null)
+                } else {
+                    // Detect deleted contacts
+                    provider.query(syncAdapterUri(account, RawContacts.CONTENT_URI),
+                            arrayOf(RawContacts._ID, LocalContact.COLUMN_LOCAL_UID),
+                            "${RawContacts.DELETED}=1", null, null
+                    )!!.use { cursor ->
+                        while (cursor.moveToNext()) {
+                            val id = cursor.getString(0)
+                            val uid = cursor.getString(1)
 
-                // Detect dirty contacts
-                provider.query(syncAdapterUri(account, RawContacts.CONTENT_URI),
-                        arrayOf(RawContacts._ID, LocalContact.COLUMN_LOCAL_UID, RawContacts.SOURCE_ID),
-                        "${RawContacts.DIRTY}=1", null, null)!!.use { cursor ->
-                    while (cursor.moveToNext()) {
-                        val id = cursor.getLong(0)
-                        val uid = cursor.getString(1)
-                        val newContact = cursor.isNull(2)
-
-                        val values = ContentValues()
-                        values.put(RawContacts._ID, id)
-                        values.put(LocalContact.COLUMN_LOCAL_UID, uid)
-                        values.put(LocalContact.COLUMN_LOCAL_BOOKID, bookId)
-                        LocalContact(addressBook, values).writeUpdateAction(decsync)
-                        if (newContact) {
-                            addToNumProcessedEntries(extra, 1)
+                            val values = ContentValues()
+                            values.put(RawContacts._ID, id)
+                            values.put(LocalContact.COLUMN_LOCAL_UID, uid)
+                            LocalContact(addressBook, values).writeDeleteAction(decsync)
+                            addToNumProcessedEntries(extra, -1)
                         }
                     }
-                }
 
-                decsync.executeAllNewEntries(extra)
+                    // Detect dirty contacts
+                    provider.query(syncAdapterUri(account, RawContacts.CONTENT_URI),
+                            arrayOf(RawContacts._ID, LocalContact.COLUMN_LOCAL_UID, RawContacts.SOURCE_ID),
+                            "${RawContacts.DIRTY}=1", null, null)!!.use { cursor ->
+                        while (cursor.moveToNext()) {
+                            val id = cursor.getLong(0)
+                            val uid = cursor.getString(1)
+                            val newContact = cursor.isNull(2)
+
+                            val values = ContentValues()
+                            values.put(RawContacts._ID, id)
+                            values.put(LocalContact.COLUMN_LOCAL_UID, uid)
+                            values.put(LocalContact.COLUMN_LOCAL_BOOKID, bookId)
+                            LocalContact(addressBook, values).writeUpdateAction(decsync)
+                            if (newContact) {
+                                addToNumProcessedEntries(extra, 1)
+                            }
+                        }
+                    }
+
+                    decsync.executeAllNewEntries(extra)
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "", e)
                 val builder = errorNotificationBuilder(context).apply {
@@ -157,9 +178,9 @@ fun syncAdapterUri(account: Account, uri: Uri): Uri {
             .build()
 }
 
-class ContactsWorker(val context: Context, params: WorkerParameters) : Worker(context, params) {
+class ContactsWorker(val context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     @ExperimentalStdlibApi
-    override fun doWork(): Result {
+    override suspend fun doWork(): Result {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SYNC_STATS) != PackageManager.PERMISSION_GRANTED) {
             return Result.failure()
         }
@@ -177,7 +198,9 @@ class ContactsWorker(val context: Context, params: WorkerParameters) : Worker(co
                     continue
                 }
 
-                val success = ContactsService.sync(context, account, provider)
+                val success = ContactsService.sync(context, account, provider) { id, notification ->
+                    setForeground(ForegroundInfo(id, notification))
+                }
                 allSuccess = allSuccess and success
             }
             return if (allSuccess) Result.success() else Result.failure()

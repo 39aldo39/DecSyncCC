@@ -20,6 +20,8 @@ package org.decsync.cc.calendars
 
 import android.Manifest
 import android.accounts.Account
+import android.accounts.AccountManager
+import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
 import android.content.*
@@ -33,9 +35,11 @@ import android.provider.CalendarContract.Events
 import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import androidx.work.Worker
+import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import at.bitfire.ical4android.AndroidCalendar
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
 import org.decsync.cc.*
 import org.decsync.cc.calendars.CalendarDecsyncUtils.CalendarFactory
@@ -59,16 +63,18 @@ class CalendarsService : Service() {
         override fun onPerformSync(account: Account, extras: Bundle,
                                    authority: String, provider: ContentProviderClient,
                                    syncResult: SyncResult) {
-            val success = sync(context, account, provider)
-            if (!success) {
-                syncResult.databaseError = true
+            runBlocking {
+                val success = sync(context, account, provider, ::startForeground)
+                if (!success) {
+                    syncResult.databaseError = true
+                }
             }
         }
     }
 
     companion object {
         @ExperimentalStdlibApi
-        fun sync(context: Context, account: Account, provider: ContentProviderClient): Boolean {
+        suspend fun sync(context: Context, account: Account, provider: ContentProviderClient, startForeground: suspend (Int, Notification) -> Unit): Boolean {
             if (!PrefUtils.getUseSaf(context) &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 return false
@@ -104,49 +110,65 @@ class CalendarsService : Service() {
                         val extra = Extra(info, context, provider)
                         val decsync = getDecsync(info, context, decsyncDir)
 
-                        // Detect changed color
-                        if (color != oldColor) {
-                            decsync.setEntry(listOf("info"), JsonPrimitive("color"), JsonPrimitive(String.format("#%06X", color and 0xFFFFFF)))
+                        val accountManager = AccountManager.get(context)
+                        val isInitSyncKey = "${PrefUtils.IS_INIT_SYNC}-$decsyncId"
+                        val isInitSync = accountManager.getUserData(account, isInitSyncKey) == "1"
+                        if (isInitSync) {
+                            val notification = initSyncNotificationBuilder(context).apply {
+                                setSmallIcon(R.drawable.ic_notification)
+                                setContentTitle(context.getString(R.string.notification_adding_events, info.name))
+                            }.build()
+                            startForeground(info.notificationId, notification)
 
-                            val values = ContentValues()
-                            values.put(COLUMN_OLD_COLOR, color)
-                            provider.update(syncAdapterUri(account, Calendars.CONTENT_URI),
-                                    values, "${Calendars._ID}=?", arrayOf(calendarId.toString()))
-                        }
-
-                        // Detect deleted events
-                        provider.query(syncAdapterUri(account, Events.CONTENT_URI), arrayOf(Events._ID),
-                                "${Events.CALENDAR_ID}=? AND ${Events.DELETED}=1",
-                                arrayOf(calendarId.toString()), null)!!.use { cursor ->
-                            while (cursor.moveToNext()) {
-                                val id = cursor.getLong(0)
+                            setNumProcessedEntries(extra, 0)
+                            decsync.initStoredEntries()
+                            decsync.executeStoredEntriesForPathPrefix(listOf("resources"), extra)
+                            accountManager.setUserData(account, isInitSyncKey, null)
+                        } else {
+                            // Detect changed color
+                            if (color != oldColor) {
+                                decsync.setEntry(listOf("info"), JsonPrimitive("color"), JsonPrimitive(String.format("#%06X", color and 0xFFFFFF)))
 
                                 val values = ContentValues()
-                                values.put(Events._ID, id)
-                                LocalEvent(calendar, values).writeDeleteAction(decsync)
-                                addToNumProcessedEntries(extra, -1)
+                                values.put(COLUMN_OLD_COLOR, color)
+                                provider.update(syncAdapterUri(account, Calendars.CONTENT_URI),
+                                        values, "${Calendars._ID}=?", arrayOf(calendarId.toString()))
                             }
-                        }
 
-                        // Detect dirty events
-                        provider.query(syncAdapterUri(account, Events.CONTENT_URI),
-                                arrayOf(Events._ID, Events.ORIGINAL_ID, Events._SYNC_ID),
-                                "${Events.CALENDAR_ID}=? AND ${Events.DIRTY}=1",
-                                arrayOf(calendarId.toString()), null)!!.use { cursor ->
-                            while (cursor.moveToNext()) {
-                                val id = cursor.getString(1) ?: cursor.getString(0)
-                                val newEvent = cursor.isNull(1) && cursor.isNull(2)
+                            // Detect deleted events
+                            provider.query(syncAdapterUri(account, Events.CONTENT_URI), arrayOf(Events._ID),
+                                    "${Events.CALENDAR_ID}=? AND ${Events.DELETED}=1",
+                                    arrayOf(calendarId.toString()), null)!!.use { cursor ->
+                                while (cursor.moveToNext()) {
+                                    val id = cursor.getLong(0)
 
-                                val values = ContentValues()
-                                values.put(Events._ID, id)
-                                LocalEvent(calendar, values).writeUpdateAction(decsync)
-                                if (newEvent) {
-                                    addToNumProcessedEntries(extra, 1)
+                                    val values = ContentValues()
+                                    values.put(Events._ID, id)
+                                    LocalEvent(calendar, values).writeDeleteAction(decsync)
+                                    addToNumProcessedEntries(extra, -1)
                                 }
                             }
-                        }
 
-                        decsync.executeAllNewEntries(extra)
+                            // Detect dirty events
+                            provider.query(syncAdapterUri(account, Events.CONTENT_URI),
+                                    arrayOf(Events._ID, Events.ORIGINAL_ID, Events._SYNC_ID),
+                                    "${Events.CALENDAR_ID}=? AND ${Events.DIRTY}=1",
+                                    arrayOf(calendarId.toString()), null)!!.use { cursor ->
+                                while (cursor.moveToNext()) {
+                                    val id = cursor.getString(1) ?: cursor.getString(0)
+                                    val newEvent = cursor.isNull(1) && cursor.isNull(2)
+
+                                    val values = ContentValues()
+                                    values.put(Events._ID, id)
+                                    LocalEvent(calendar, values).writeUpdateAction(decsync)
+                                    if (newEvent) {
+                                        addToNumProcessedEntries(extra, 1)
+                                    }
+                                }
+                            }
+
+                            decsync.executeAllNewEntries(extra)
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -174,9 +196,9 @@ class CalendarsService : Service() {
     }
 }
 
-class CalendarsWorker(val context: Context, params: WorkerParameters) : Worker(context, params) {
+class CalendarsWorker(val context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     @ExperimentalStdlibApi
-    override fun doWork(): Result {
+    override suspend fun doWork(): Result {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SYNC_STATS) != PackageManager.PERMISSION_GRANTED) {
             return Result.failure()
         }
@@ -188,7 +210,9 @@ class CalendarsWorker(val context: Context, params: WorkerParameters) : Worker(c
 
         val provider = context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY) ?: return Result.failure()
         try {
-            val success = CalendarsService.sync(context, calendarsAccount, provider)
+            val success = CalendarsService.sync(context, calendarsAccount, provider) { id, notification ->
+                setForeground(ForegroundInfo(id, notification))
+            }
             return if (success) Result.success() else Result.failure()
         } finally {
             if (Build.VERSION.SDK_INT >= 24)

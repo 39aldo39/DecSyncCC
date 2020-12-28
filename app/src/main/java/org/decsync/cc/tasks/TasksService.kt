@@ -3,6 +3,7 @@ package org.decsync.cc.tasks
 import android.Manifest
 import android.accounts.Account
 import android.accounts.AccountManager
+import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
 import android.content.*
@@ -13,10 +14,12 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import androidx.work.Worker
+import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import at.bitfire.ical4android.AndroidTaskList
 import at.bitfire.ical4android.TaskProvider
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
 import org.decsync.cc.*
 import org.dmfs.tasks.contract.TaskContract
@@ -40,16 +43,18 @@ open class TasksService : Service() {
         override fun onPerformSync(account: Account, extras: Bundle,
                                    authority: String, provider: ContentProviderClient,
                                    syncResult: SyncResult) {
-            val success = sync(context, account, authority, provider)
-            if (!success) {
-                syncResult.databaseError = true
+            runBlocking {
+                val success = sync(context, account, authority, provider, ::startForeground)
+                if (!success) {
+                    syncResult.databaseError = true
+                }
             }
         }
     }
 
     companion object {
         @ExperimentalStdlibApi
-        fun sync(context: Context, account: Account, authority: String, provider: ContentProviderClient): Boolean {
+        suspend fun sync(context: Context, account: Account, authority: String, provider: ContentProviderClient, startForeground: suspend (Int, Notification) -> Unit): Boolean {
             if (!PrefUtils.getUseSaf(context) &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 return false
@@ -82,33 +87,50 @@ open class TasksService : Service() {
                     val extra = Extra(info, context, provider)
                     val decsync = getDecsync(info, context, decsyncDir)
 
-                    if (color != taskList.oldColor) {
-                        decsync.setEntry(listOf("info"), JsonPrimitive("color"), JsonPrimitive(String.format("#%06X", color and 0xFFFFFF)))
+                    val accountManager = AccountManager.get(context)
+                    val isInitSyncKey = "${PrefUtils.IS_INIT_SYNC}-${taskList.syncId}"
+                    val isInitSync = accountManager.getUserData(account, isInitSyncKey) == "1"
+                    if (isInitSync) {
+                        val notification = initSyncNotificationBuilder(context).apply {
+                            setSmallIcon(R.drawable.ic_notification)
+                            setContentTitle(context.getString(R.string.notification_adding_tasks, info.name))
+                        }.build()
+                        startForeground(info.notificationId, notification)
 
-                        val values = ContentValues()
-                        values.put(COLUMN_OLD_COLOR, color)
-                        taskList.update(values)
-                    }
+                        setNumProcessedEntries(extra, 0)
+                        decsync.initStoredEntries()
+                        decsync.executeStoredEntriesForPathPrefix(listOf("resources"), extra)
+                        accountManager.setUserData(account, isInitSyncKey, null)
+                    } else {
+                        // Detect changed color
+                        if (color != taskList.oldColor) {
+                            decsync.setEntry(listOf("info"), JsonPrimitive("color"), JsonPrimitive(String.format("#%06X", color and 0xFFFFFF)))
 
-                    // Detect deleted tasks
-                    val deletedTasks = taskList.queryTasks(TaskContract.Tasks._DELETED, null)
-                    for (task in deletedTasks) {
-                        task.writeDeleteAction(decsync)
-                        addToNumProcessedEntries(extra, -1)
-                    }
-
-                    // Detect dirty tasks
-                    val dirtyTasks = taskList.queryTasks(TaskContract.Tasks._DIRTY, null)
-                    for (task in dirtyTasks) {
-                        task.writeUpdateAction(decsync)
-                        val isNewTask = task.isNewTask
-                        if (isNewTask) {
-                            task.isNewTask = false
-                            addToNumProcessedEntries(extra, 1)
+                            val values = ContentValues()
+                            values.put(COLUMN_OLD_COLOR, color)
+                            taskList.update(values)
                         }
-                    }
 
-                    decsync.executeAllNewEntries(extra)
+                        // Detect deleted tasks
+                        val deletedTasks = taskList.queryTasks(TaskContract.Tasks._DELETED, null)
+                        for (task in deletedTasks) {
+                            task.writeDeleteAction(decsync)
+                            addToNumProcessedEntries(extra, -1)
+                        }
+
+                        // Detect dirty tasks
+                        val dirtyTasks = taskList.queryTasks(TaskContract.Tasks._DIRTY, null)
+                        for (task in dirtyTasks) {
+                            task.writeUpdateAction(decsync)
+                            val isNewTask = task.isNewTask
+                            if (isNewTask) {
+                                task.isNewTask = false
+                                addToNumProcessedEntries(extra, 1)
+                            }
+                        }
+
+                        decsync.executeAllNewEntries(extra)
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "", e)
@@ -138,9 +160,9 @@ open class TasksService : Service() {
 class OpenTasksService : TasksService()
 class TasksOrgService : TasksService()
 
-class TasksWorker(val context: Context, params: WorkerParameters) : Worker(context, params) {
+class TasksWorker(val context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     @ExperimentalStdlibApi
-    override fun doWork(): Result {
+    override suspend fun doWork(): Result {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SYNC_STATS) != PackageManager.PERMISSION_GRANTED) {
             return Result.failure()
         }
@@ -153,7 +175,9 @@ class TasksWorker(val context: Context, params: WorkerParameters) : Worker(conte
 
         val provider = context.contentResolver.acquireContentProviderClient(authority) ?: return Result.failure()
         try {
-            val success = TasksService.sync(context, tasksAccount, authority, provider)
+            val success = TasksService.sync(context, tasksAccount, authority, provider) { id, notification ->
+                setForeground(ForegroundInfo(id, notification))
+            }
             return if (success) Result.success() else Result.failure()
         } finally {
             if (Build.VERSION.SDK_INT >= 24)

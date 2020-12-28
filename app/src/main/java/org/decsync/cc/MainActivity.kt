@@ -44,17 +44,16 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import org.decsync.cc.calendars.COLUMN_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.calendars.CalendarDecsyncUtils
-import org.decsync.cc.calendars.CalendarsInitWorker
+import org.decsync.cc.calendars.CalendarsWorker
 import org.decsync.cc.contacts.ContactDecsyncUtils
-import org.decsync.cc.contacts.ContactsInitWorker
 import org.decsync.cc.contacts.KEY_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.cc.tasks.LocalTaskList
 import org.decsync.cc.tasks.TasksDecsyncUtils
-import org.decsync.cc.tasks.TasksInitWorker
 import org.decsync.library.*
 import org.dmfs.tasks.contract.TaskContract
 import java.util.Random
+import java.util.concurrent.TimeUnit
 import kotlin.math.min
 
 const val TAG = "DecSyncCC"
@@ -426,36 +425,13 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.sync_now -> {
-                // Using sync adapter
                 val extras = Bundle()
                 extras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true) // Manual sync
                 extras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true) // Run immediately (don't queue)
 
-                val calendarsAuthority = CalendarContract.AUTHORITY
-                val calendarsAccount = Account(PrefUtils.getCalendarAccountName(this), getString(R.string.account_type_calendars))
-                ContentResolver.requestSync(calendarsAccount, calendarsAuthority, extras)
-
-                if (!error) {
-                    val contactsAuthority = ContactsContract.AUTHORITY
-                    val count = address_books.adapter.count
-                    for (position in 0 until count) {
-                        val info = address_books.adapter.getItem(position) as CollectionInfo
-                        if (!info.isEnabled(this)) continue
-                        val account = info.getAccount(this)
-                        ContentResolver.requestSync(account, contactsAuthority, extras)
-                    }
-                }
-
-                val tasksAuthority = PrefUtils.getTasksAuthority(this)
-                if (tasksAuthority != null) {
-                    val tasksAccount = Account(PrefUtils.getTasksAccountName(this), getString(R.string.account_type_tasks))
-                    ContentResolver.requestSync(tasksAccount, tasksAuthority, extras)
-                }
-
-                // Using work manager (if enabled)
-                if (PrefUtils.getOfflineSync(this)) {
-                    PrefUtils.updateOfflineSync(this, true)
-                }
+                syncAddressBooks(extras)
+                syncCalendars(extras)
+                syncTaskLists(extras)
 
                 Snackbar.make(findViewById(R.id.parent), R.string.account_synchronizing_now, Snackbar.LENGTH_LONG).show()
             }
@@ -467,6 +443,55 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                 return super.onOptionsItemSelected(item)
         }
         return true
+    }
+
+    private fun syncAddressBooks(extras: Bundle, account: Account? = null) {
+        // Using sync adapter
+        if (!error) {
+            val authority = ContactsContract.AUTHORITY
+            val count = address_books.adapter.count
+            if (account != null) {
+                ContentResolver.requestSync(account, authority, extras)
+            } else {
+                for (position in 0 until count) {
+                    val info = address_books.adapter.getItem(position) as CollectionInfo
+                    if (!info.isEnabled(this)) continue
+                    val account = info.getAccount(this)
+                    ContentResolver.requestSync(account, authority, extras)
+                }
+            }
+        }
+
+        // Using work manager (if enabled)
+        if (PrefUtils.getOfflineSync(this)) {
+            PrefUtils.updateOfflineSyncAddressBooks(this, true)
+        }
+    }
+
+    private fun syncCalendars(extras: Bundle) {
+        // Using sync adapter
+        val authority = CalendarContract.AUTHORITY
+        val account = Account(PrefUtils.getCalendarAccountName(this), getString(R.string.account_type_calendars))
+        ContentResolver.requestSync(account, authority, extras)
+
+        // Using work manager (if enabled)
+        if (PrefUtils.getOfflineSync(this)) {
+            PrefUtils.updateOfflineSyncCalendars(this, true)
+        }
+    }
+
+    private fun syncTaskLists(extras: Bundle) {
+        // Using sync adapter
+        val authority = PrefUtils.getTasksAuthority(this)
+        if (authority != null) {
+            val account = Account(PrefUtils.getTasksAccountName(this), getString(R.string.account_type_tasks))
+            ContentResolver.requestSync(account, authority, extras)
+        }
+
+        // Using work manager (if enabled)
+        if (PrefUtils.getOfflineSync(this)) {
+            PrefUtils.updateOfflineSyncTaskLists(this, true)
+        }
     }
 
     override fun onMenuItemClick(item: MenuItem): Boolean {
@@ -641,21 +666,15 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
         if (nowChecked) {
             info.create(this)
-            val inputData = Data.Builder()
-                    .putString(InitWorker.KEY_ID, info.id)
-                    .putString(InitWorker.KEY_NAME, info.name)
-                    .build()
-            val workerClass = when (info) {
-                is AddressBookInfo -> ContactsInitWorker::class.java
-                is CalendarInfo -> CalendarsInitWorker::class.java
-                is TaskListInfo -> TasksInitWorker::class.java
+            val extras = Bundle()
+            extras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true) // Manual sync
+            extras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true) // Run immediately (don't queue)
+            when (info) {
+                is AddressBookInfo -> syncAddressBooks(extras, info.getAccount(this))
+                is CalendarInfo -> syncCalendars(extras)
+                is TaskListInfo -> syncTaskLists(extras)
             }
-            val workRequest = OneTimeWorkRequest.Builder(workerClass)
-                    .setInputData(inputData)
-                    .build()
-            WorkManager.getInstance(this).enqueueUniqueWork("${info.notificationId}", ExistingWorkPolicy.REPLACE, workRequest)
         } else {
-            WorkManager.getInstance(this).cancelUniqueWork("${info.notificationId}")
             info.remove(this)
         }
         adapter.notifyDataSetChanged()

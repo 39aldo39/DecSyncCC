@@ -23,9 +23,9 @@ import android.os.Build
 import android.os.Environment
 import android.preference.PreferenceManager
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.PeriodicWorkRequest
-import androidx.work.WorkManager
+import androidx.work.*
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.decsync.cc.calendars.CalendarsWorker
 import org.decsync.cc.contacts.ContactsWorker
 import org.decsync.cc.tasks.TasksWorker
@@ -51,6 +51,7 @@ object PrefUtils {
     const val CALENDAR_ACCOUNT_NAME = "calendar_account_name"
     const val TASKS_ACCOUNT_NAME = "tasks_account_name"
     const val TASKS_AUTHORITY = "tasks_authority"
+    const val IS_INIT_SYNC = "is_init_sync"
 
     val currentAppVersion = 3
     val defaultDecsyncDir = "${Environment.getExternalStorageDirectory()}/DecSync"
@@ -159,22 +160,53 @@ object PrefUtils {
     }
 
     fun updateOfflineSync(context: Context, doOfflineSync: Boolean) {
+        updateOfflineSyncAddressBooks(context, doOfflineSync)
+        updateOfflineSyncCalendars(context, doOfflineSync)
+        updateOfflineSyncTaskLists(context, doOfflineSync)
+    }
+
+    fun updateOfflineSyncAddressBooks(context: Context, doOfflineSync: Boolean) {
         val workManager = WorkManager.getInstance(context)
         if (doOfflineSync) {
-            val calendarsWorkRequest = PeriodicWorkRequest.Builder(CalendarsWorker::class.java, 1, TimeUnit.HOURS)
-                    .addTag(OFFLINE_SYNC)
-                    .build()
-            val contactsWorkRequest = PeriodicWorkRequest.Builder(ContactsWorker::class.java, 1, TimeUnit.HOURS)
-                    .addTag(OFFLINE_SYNC)
-                    .build()
-            val tasksWorkRequest = PeriodicWorkRequest.Builder(TasksWorker::class.java, 1, TimeUnit.HOURS)
-                    .addTag(OFFLINE_SYNC)
-                    .build()
-            workManager.enqueueUniquePeriodicWork(OFFLINE_SYNC_CALENDARS, ExistingPeriodicWorkPolicy.REPLACE, calendarsWorkRequest)
-            workManager.enqueueUniquePeriodicWork(OFFLINE_SYNC_CONTACTS, ExistingPeriodicWorkPolicy.REPLACE, contactsWorkRequest)
-            workManager.enqueueUniquePeriodicWork(OFFLINE_SYNC_TASKS, ExistingPeriodicWorkPolicy.REPLACE, tasksWorkRequest)
+            GlobalScope.launch {
+                val workInfos = workManager.getWorkInfosForUniqueWork(OFFLINE_SYNC_CONTACTS).await()
+                if (workInfos.all { it.state != WorkInfo.State.RUNNING }) {
+                    val workRequest = PeriodicWorkRequest.Builder(ContactsWorker::class.java, 1, TimeUnit.HOURS).build()
+                    workManager.enqueueUniquePeriodicWork(OFFLINE_SYNC_CONTACTS, ExistingPeriodicWorkPolicy.REPLACE, workRequest)
+                }
+            }
         } else {
-            workManager.cancelAllWorkByTag(OFFLINE_SYNC)
+            workManager.cancelAllWorkByTag(OFFLINE_SYNC_CONTACTS)
+        }
+    }
+
+    fun updateOfflineSyncCalendars(context: Context, doOfflineSync: Boolean) {
+        val workManager = WorkManager.getInstance(context)
+        if (doOfflineSync) {
+            GlobalScope.launch {
+                val workInfos = workManager.getWorkInfosForUniqueWork(OFFLINE_SYNC_CALENDARS).await()
+                if (workInfos.all { it.state != WorkInfo.State.RUNNING }) {
+                    val workRequest = PeriodicWorkRequest.Builder(CalendarsWorker::class.java, 1, TimeUnit.HOURS).build()
+                    workManager.enqueueUniquePeriodicWork(OFFLINE_SYNC_CALENDARS, ExistingPeriodicWorkPolicy.REPLACE, workRequest)
+                }
+            }
+        } else {
+            workManager.cancelAllWorkByTag(OFFLINE_SYNC_CALENDARS)
+        }
+    }
+
+    fun updateOfflineSyncTaskLists(context: Context, doOfflineSync: Boolean) {
+        val workManager = WorkManager.getInstance(context)
+        if (doOfflineSync) {
+            GlobalScope.launch {
+                val workInfos = workManager.getWorkInfosForUniqueWork(OFFLINE_SYNC_TASKS).await()
+                if (workInfos.all { it.state != WorkInfo.State.RUNNING }) {
+                    val workRequest = PeriodicWorkRequest.Builder(TasksWorker::class.java, 1, TimeUnit.HOURS).build()
+                    workManager.enqueueUniquePeriodicWork(OFFLINE_SYNC_TASKS, ExistingPeriodicWorkPolicy.REPLACE, workRequest)
+                }
+            }
+        } else {
+            workManager.cancelAllWorkByTag(OFFLINE_SYNC_TASKS)
         }
     }
 
