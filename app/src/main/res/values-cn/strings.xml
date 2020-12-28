@@ -38,7 +38,7 @@
     <string name="rename_collection">重命名集合</string>
     <string name="rename_collection_title">集合的新名称</string>
     <string name="delete_collection">删除集合</string>
-    <string name="delete_collection_title">你确定要删除一个或多个集合吗？</string>
+    <!--<string name="delete_collection_title">你确定要删除一个或多个集合吗？</string>-->
     <string name="no_task_app_title">未安装任务应用程序。 选择一款进行安装。</string>
     <string name="choose_task_app_title">安装了多款任务应用程序。 选择一款来使用。</string>
     <string name="entries_count">条目数</string>
