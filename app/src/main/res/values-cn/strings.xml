@@ -32,7 +32,6 @@
     <string name="account_create_new_address_book">新建通讯簿</string>
     <string name="account_refresh_calendar_list">刷新日历列表</string>
     <string name="account_create_new_calendar">新建日历</string>
-    <string name="change_calendar_colors">更改日历颜色</string>
     <string name="account_create_new_task_list">新建任务列表</string>
     <string name="create_collection_title">新集合的名称</string>
     <string name="rename_collection">重命名集合</string>

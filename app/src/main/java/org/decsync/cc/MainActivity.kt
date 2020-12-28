@@ -14,7 +14,6 @@ import android.accounts.Account
 import android.accounts.AccountManager
 import android.annotation.TargetApi
 import android.content.*
-import android.content.ContentResolver
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
@@ -27,24 +26,25 @@ import android.provider.CalendarContract.Events
 import android.provider.ContactsContract
 import android.provider.ContactsContract.RawContacts
 import android.provider.Settings
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
 import android.util.Log
 import android.view.*
 import android.widget.*
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.work.*
 import at.bitfire.ical4android.AndroidTaskList
 import at.bitfire.ical4android.TaskProvider
+import com.flask.colorpicker.ColorPickerView
+import com.flask.colorpicker.builder.ColorPickerDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import org.decsync.cc.calendars.COLUMN_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.calendars.CalendarDecsyncUtils
-import org.decsync.cc.calendars.CalendarsWorker
 import org.decsync.cc.contacts.ContactDecsyncUtils
 import org.decsync.cc.contacts.KEY_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.contacts.syncAdapterUri
@@ -52,9 +52,9 @@ import org.decsync.cc.tasks.LocalTaskList
 import org.decsync.cc.tasks.TasksDecsyncUtils
 import org.decsync.library.*
 import org.dmfs.tasks.contract.TaskContract
-import java.util.Random
-import java.util.concurrent.TimeUnit
+import java.util.*
 import kotlin.math.min
+
 
 const val TAG = "DecSyncCC"
 
@@ -532,11 +532,20 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                         .setPositiveButton(android.R.string.ok) { _, _ ->
                             val name = input.text.toString()
                             if (name.isNotBlank()) {
-                                val id = "colID%05d".format(Random().nextInt(100000))
-                                val info = CalendarInfo(id, name, null)
-                                GlobalScope.launch {
-                                    setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
-                                }
+                                ColorPickerDialogBuilder.with(this).apply {
+                                    wheelType(ColorPickerView.WHEEL_TYPE.CIRCLE)
+                                    density(7)
+                                    lightnessSliderOnly()
+                                    setPositiveButton(android.R.string.ok) { _, color, _ ->
+                                        GlobalScope.launch {
+                                            val id = "colID%05d".format(Random().nextInt(100000))
+                                            val info = CalendarInfo(id, name, color)
+                                            setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
+                                            setCollectionInfo(info, JsonPrimitive("color"), JsonPrimitive(Utils.colorToString(color)))
+                                        }
+                                    }
+                                    setNegativeButton(android.R.string.cancel) { _, _ -> }
+                                }.build().show()
                             }
                         }
                         .setNegativeButton(android.R.string.cancel) { _, _ -> }
@@ -554,31 +563,24 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                         .setPositiveButton(android.R.string.ok) { _, _ ->
                             val name = input.text.toString()
                             if (name.isNotBlank()) {
-                                val id = "colID%05d".format(Random().nextInt(100000))
-                                val info = TaskListInfo(id, name, null)
-                                GlobalScope.launch {
-                                    setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
-                                }
+                                ColorPickerDialogBuilder.with(this).apply {
+                                    wheelType(ColorPickerView.WHEEL_TYPE.CIRCLE)
+                                    density(7)
+                                    lightnessSliderOnly()
+                                    setPositiveButton(android.R.string.ok) { _, color, _ ->
+                                        GlobalScope.launch {
+                                            val id = "colID%05d".format(Random().nextInt(100000))
+                                            val info = TaskListInfo(id, name, color)
+                                            setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
+                                            setCollectionInfo(info, JsonPrimitive("color"), JsonPrimitive(Utils.colorToString(color)))
+                                        }
+                                    }
+                                    setNegativeButton(android.R.string.cancel) { _, _ -> }
+                                }.build().show()
                             }
                         }
                         .setNegativeButton(android.R.string.cancel) { _, _ -> }
                         .show()
-            }
-            R.id.change_calendar_colors -> {
-                val packageInFdroid = "ch.ihdg.calendarcolor"
-                val packageInPlay = "net.slintes.android.ccc.full"
-                val intent = Utils.launchIntent(this, packageInFdroid)
-                        ?: Utils.launchIntent(this, packageInPlay)
-                        ?: run {
-                            if (Utils.appInstalled(this, "org.fdroid.fdroid")) {
-                                Utils.installAppIntent(this, packageInFdroid, true)
-                            } else {
-                                Utils.installAppIntent(this, packageInPlay)
-                            }
-                        }
-                if (intent != null) {
-                    startActivity(intent)
-                }
             }
         }
         return false
@@ -692,6 +694,9 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     private val onActionOverflowListener = { anchor: View, info: CollectionInfo ->
         val popup = PopupMenu(this, anchor, Gravity.END)
         popup.inflate(R.menu.account_collection_operations)
+        if (info is AddressBookInfo) {
+            popup.menu.findItem(R.id.change_color_collection)?.isVisible = false
+        }
 
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
@@ -711,6 +716,22 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             }
                             .setNegativeButton(android.R.string.cancel) { _, _ -> }
                             .show()
+                }
+                R.id.change_color_collection -> {
+                    ColorPickerDialogBuilder.with(this).apply {
+                        info.color?.let { initialColor(it) }
+                        wheelType(ColorPickerView.WHEEL_TYPE.CIRCLE)
+                        density(7)
+                        lightnessSliderOnly()
+                        setPositiveButton(android.R.string.ok) { _, color, _ ->
+                            if (color != info.color) {
+                                GlobalScope.launch {
+                                    setCollectionInfo(info, JsonPrimitive("color"), JsonPrimitive(Utils.colorToString(color)))
+                                }
+                            }
+                        }
+                        setNegativeButton(android.R.string.cancel) { _, _ -> }
+                    }.build().show()
                 }
                 R.id.delete_collection -> {
                     AlertDialog.Builder(this)

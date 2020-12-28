@@ -69,6 +69,7 @@ dependencies {
     implementation 'org.decsync:libdecsync-android:1.8.3'
     implementation 'com.github.AppIntro:AppIntro:6.0.0'
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.1'
+    implementation 'com.github.QuadFlask:colorpicker:0.0.15'
 
     implementation project(":vcard4android")
     implementation project(":ical4android")

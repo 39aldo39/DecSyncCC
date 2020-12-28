@@ -104,7 +104,7 @@ open class TasksService : Service() {
                     } else {
                         // Detect changed color
                         if (color != taskList.oldColor) {
-                            decsync.setEntry(listOf("info"), JsonPrimitive("color"), JsonPrimitive(String.format("#%06X", color and 0xFFFFFF)))
+                            decsync.setEntry(listOf("info"), JsonPrimitive("color"), JsonPrimitive(Utils.colorToString(color)))
 
                             val values = ContentValues()
                             values.put(COLUMN_OLD_COLOR, color)
