@@ -14,7 +14,6 @@ import android.accounts.Account
 import android.accounts.AccountManager
 import android.annotation.TargetApi
 import android.content.*
-import android.content.ContentResolver
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
@@ -27,35 +26,35 @@ import android.provider.CalendarContract.Events
 import android.provider.ContactsContract
 import android.provider.ContactsContract.RawContacts
 import android.provider.Settings
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
 import android.util.Log
 import android.view.*
 import android.widget.*
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.work.*
 import at.bitfire.ical4android.AndroidTaskList
 import at.bitfire.ical4android.TaskProvider
+import com.flask.colorpicker.ColorPickerView
+import com.flask.colorpicker.builder.ColorPickerDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import org.decsync.cc.calendars.COLUMN_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.calendars.CalendarDecsyncUtils
-import org.decsync.cc.calendars.CalendarsInitWorker
 import org.decsync.cc.contacts.ContactDecsyncUtils
-import org.decsync.cc.contacts.ContactsInitWorker
 import org.decsync.cc.contacts.KEY_NUM_PROCESSED_ENTRIES
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.cc.tasks.LocalTaskList
 import org.decsync.cc.tasks.TasksDecsyncUtils
-import org.decsync.cc.tasks.TasksInitWorker
 import org.decsync.library.*
 import org.dmfs.tasks.contract.TaskContract
-import java.util.Random
+import java.util.*
 import kotlin.math.min
+
 
 const val TAG = "DecSyncCC"
 
@@ -426,36 +425,13 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.sync_now -> {
-                // Using sync adapter
                 val extras = Bundle()
                 extras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true) // Manual sync
                 extras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true) // Run immediately (don't queue)
 
-                val calendarsAuthority = CalendarContract.AUTHORITY
-                val calendarsAccount = Account(PrefUtils.getCalendarAccountName(this), getString(R.string.account_type_calendars))
-                ContentResolver.requestSync(calendarsAccount, calendarsAuthority, extras)
-
-                if (!error) {
-                    val contactsAuthority = ContactsContract.AUTHORITY
-                    val count = address_books.adapter.count
-                    for (position in 0 until count) {
-                        val info = address_books.adapter.getItem(position) as CollectionInfo
-                        if (!info.isEnabled(this)) continue
-                        val account = info.getAccount(this)
-                        ContentResolver.requestSync(account, contactsAuthority, extras)
-                    }
-                }
-
-                val tasksAuthority = PrefUtils.getTasksAuthority(this)
-                if (tasksAuthority != null) {
-                    val tasksAccount = Account(PrefUtils.getTasksAccountName(this), getString(R.string.account_type_tasks))
-                    ContentResolver.requestSync(tasksAccount, tasksAuthority, extras)
-                }
-
-                // Using work manager (if enabled)
-                if (PrefUtils.getOfflineSync(this)) {
-                    PrefUtils.updateOfflineSync(this, true)
-                }
+                syncAddressBooks(extras)
+                syncCalendars(extras)
+                syncTaskLists(extras)
 
                 Snackbar.make(findViewById(R.id.parent), R.string.account_synchronizing_now, Snackbar.LENGTH_LONG).show()
             }
@@ -467,6 +443,55 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                 return super.onOptionsItemSelected(item)
         }
         return true
+    }
+
+    private fun syncAddressBooks(extras: Bundle, account: Account? = null) {
+        // Using sync adapter
+        if (!error) {
+            val authority = ContactsContract.AUTHORITY
+            val count = address_books.adapter.count
+            if (account != null) {
+                ContentResolver.requestSync(account, authority, extras)
+            } else {
+                for (position in 0 until count) {
+                    val info = address_books.adapter.getItem(position) as CollectionInfo
+                    if (!info.isEnabled(this)) continue
+                    val account = info.getAccount(this)
+                    ContentResolver.requestSync(account, authority, extras)
+                }
+            }
+        }
+
+        // Using work manager (if enabled)
+        if (PrefUtils.getOfflineSync(this)) {
+            PrefUtils.updateOfflineSyncAddressBooks(this, true)
+        }
+    }
+
+    private fun syncCalendars(extras: Bundle) {
+        // Using sync adapter
+        val authority = CalendarContract.AUTHORITY
+        val account = Account(PrefUtils.getCalendarAccountName(this), getString(R.string.account_type_calendars))
+        ContentResolver.requestSync(account, authority, extras)
+
+        // Using work manager (if enabled)
+        if (PrefUtils.getOfflineSync(this)) {
+            PrefUtils.updateOfflineSyncCalendars(this, true)
+        }
+    }
+
+    private fun syncTaskLists(extras: Bundle) {
+        // Using sync adapter
+        val authority = PrefUtils.getTasksAuthority(this)
+        if (authority != null) {
+            val account = Account(PrefUtils.getTasksAccountName(this), getString(R.string.account_type_tasks))
+            ContentResolver.requestSync(account, authority, extras)
+        }
+
+        // Using work manager (if enabled)
+        if (PrefUtils.getOfflineSync(this)) {
+            PrefUtils.updateOfflineSyncTaskLists(this, true)
+        }
     }
 
     override fun onMenuItemClick(item: MenuItem): Boolean {
@@ -485,7 +510,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                         .setPositiveButton(android.R.string.ok) { _, _ ->
                             val name = input.text.toString()
                             if (name.isNotBlank()) {
-                                val id = "colID%05d".format(Random().nextInt(100000))
+                                val id = UUID.randomUUID().toString()
                                 val info = AddressBookInfo(id, name)
                                 GlobalScope.launch {
                                     setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
@@ -507,11 +532,20 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                         .setPositiveButton(android.R.string.ok) { _, _ ->
                             val name = input.text.toString()
                             if (name.isNotBlank()) {
-                                val id = "colID%05d".format(Random().nextInt(100000))
-                                val info = CalendarInfo(id, name, null)
-                                GlobalScope.launch {
-                                    setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
-                                }
+                                ColorPickerDialogBuilder.with(this).apply {
+                                    wheelType(ColorPickerView.WHEEL_TYPE.CIRCLE)
+                                    density(7)
+                                    lightnessSliderOnly()
+                                    setPositiveButton(android.R.string.ok) { _, color, _ ->
+                                        GlobalScope.launch {
+                                            val id = UUID.randomUUID().toString()
+                                            val info = CalendarInfo(id, name, color)
+                                            setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
+                                            setCollectionInfo(info, JsonPrimitive("color"), JsonPrimitive(Utils.colorToString(color)))
+                                        }
+                                    }
+                                    setNegativeButton(android.R.string.cancel) { _, _ -> }
+                                }.build().show()
                             }
                         }
                         .setNegativeButton(android.R.string.cancel) { _, _ -> }
@@ -529,29 +563,24 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                         .setPositiveButton(android.R.string.ok) { _, _ ->
                             val name = input.text.toString()
                             if (name.isNotBlank()) {
-                                val id = "colID%05d".format(Random().nextInt(100000))
-                                val info = TaskListInfo(id, name, null)
-                                GlobalScope.launch {
-                                    setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
-                                }
+                                ColorPickerDialogBuilder.with(this).apply {
+                                    wheelType(ColorPickerView.WHEEL_TYPE.CIRCLE)
+                                    density(7)
+                                    lightnessSliderOnly()
+                                    setPositiveButton(android.R.string.ok) { _, color, _ ->
+                                        GlobalScope.launch {
+                                            val id = UUID.randomUUID().toString()
+                                            val info = TaskListInfo(id, name, color)
+                                            setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
+                                            setCollectionInfo(info, JsonPrimitive("color"), JsonPrimitive(Utils.colorToString(color)))
+                                        }
+                                    }
+                                    setNegativeButton(android.R.string.cancel) { _, _ -> }
+                                }.build().show()
                             }
                         }
                         .setNegativeButton(android.R.string.cancel) { _, _ -> }
                         .show()
-            }
-            R.id.change_calendar_colors -> {
-                val packageInFdroid = "ch.ihdg.calendarcolor"
-                val packageInPlay = "net.slintes.android.ccc.full"
-                val intent = Utils.launchIntent(this, packageInFdroid)
-                        ?: Utils.launchIntent(this, packageInPlay)
-                        ?: run {
-                            val fdroidInstalled = Utils.appInstalled(this, "org.fdroid.fdroid")
-                            val packageName = if (fdroidInstalled) packageInFdroid else packageInPlay
-                            Utils.installAppIntent(this, packageName)
-                        }
-                if (intent != null) {
-                    startActivity(intent)
-                }
             }
         }
         return false
@@ -639,21 +668,15 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
         if (nowChecked) {
             info.create(this)
-            val inputData = Data.Builder()
-                    .putString(InitWorker.KEY_ID, info.id)
-                    .putString(InitWorker.KEY_NAME, info.name)
-                    .build()
-            val workerClass = when (info) {
-                is AddressBookInfo -> ContactsInitWorker::class.java
-                is CalendarInfo -> CalendarsInitWorker::class.java
-                is TaskListInfo -> TasksInitWorker::class.java
+            val extras = Bundle()
+            extras.putBoolean(ContentResolver.SYNC_EXTRAS_MANUAL, true) // Manual sync
+            extras.putBoolean(ContentResolver.SYNC_EXTRAS_EXPEDITED, true) // Run immediately (don't queue)
+            when (info) {
+                is AddressBookInfo -> syncAddressBooks(extras, info.getAccount(this))
+                is CalendarInfo -> syncCalendars(extras)
+                is TaskListInfo -> syncTaskLists(extras)
             }
-            val workRequest = OneTimeWorkRequest.Builder(workerClass)
-                    .setInputData(inputData)
-                    .build()
-            WorkManager.getInstance(this).enqueueUniqueWork("${info.notificationId}", ExistingWorkPolicy.REPLACE, workRequest)
         } else {
-            WorkManager.getInstance(this).cancelUniqueWork("${info.notificationId}")
             info.remove(this)
         }
         adapter.notifyDataSetChanged()
@@ -671,6 +694,9 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     private val onActionOverflowListener = { anchor: View, info: CollectionInfo ->
         val popup = PopupMenu(this, anchor, Gravity.END)
         popup.inflate(R.menu.account_collection_operations)
+        if (info is AddressBookInfo) {
+            popup.menu.findItem(R.id.change_color_collection)?.isVisible = false
+        }
 
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
@@ -682,7 +708,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             .setView(input)
                             .setPositiveButton(android.R.string.ok) { _, _ ->
                                 val name = input.text.toString()
-                                if (!name.isBlank() && name != info.name) {
+                                if (name.isNotBlank() && name != info.name) {
                                     GlobalScope.launch {
                                         setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
                                     }
@@ -690,6 +716,22 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             }
                             .setNegativeButton(android.R.string.cancel) { _, _ -> }
                             .show()
+                }
+                R.id.change_color_collection -> {
+                    ColorPickerDialogBuilder.with(this).apply {
+                        info.color?.let { initialColor(it) }
+                        wheelType(ColorPickerView.WHEEL_TYPE.CIRCLE)
+                        density(7)
+                        lightnessSliderOnly()
+                        setPositiveButton(android.R.string.ok) { _, color, _ ->
+                            if (color != info.color) {
+                                GlobalScope.launch {
+                                    setCollectionInfo(info, JsonPrimitive("color"), JsonPrimitive(Utils.colorToString(color)))
+                                }
+                            }
+                        }
+                        setNegativeButton(android.R.string.cancel) { _, _ -> }
+                    }.build().show()
                 }
                 R.id.delete_collection -> {
                     AlertDialog.Builder(this)
@@ -705,82 +747,92 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                 R.id.entries_count -> {
                     var androidEntries = 0
                     var processedEntries = 0
-                    info.getProviderClient(this)?.let { provider ->
-                        try {
-                            when (info) {
-                                is AddressBookInfo -> {
-                                    processedEntries = AccountManager.get(this).getUserData(info.getAccount(this), KEY_NUM_PROCESSED_ENTRIES)?.toInt()
-                                            ?: 0
-                                    provider.query(syncAdapterUri(info.getAccount(this), RawContacts.CONTENT_URI),
-                                            emptyArray(), "${RawContacts.DELETED}=0",
-                                            null, null)!!.use { cursor ->
-                                        androidEntries = cursor.count
-                                    }
-                                }
-                                is CalendarInfo -> {
-                                    val calendarId = provider.query(syncAdapterUri(info.getAccount(this), Calendars.CONTENT_URI),
-                                            arrayOf(Calendars._ID, COLUMN_NUM_PROCESSED_ENTRIES), "${Calendars.NAME}=?",
-                                            arrayOf(info.id), null)!!.use { calCursor ->
-                                        if (calCursor.moveToFirst()) {
-                                            processedEntries = if (calCursor.isNull(1)) 0 else calCursor.getInt(1)
-                                            calCursor.getLong(0)
-                                        } else {
-                                            null
+
+                    val permissions = mutableListOf<String>()
+                    for (permission in info.getPermissions(this)) {
+                        if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                            permissions.add(permission)
+                        }
+                    }
+                    if (permissions.isEmpty()) {
+                        info.getProviderClient(this)?.let { provider ->
+                            try {
+                                when (info) {
+                                    is AddressBookInfo -> {
+                                        processedEntries = AccountManager.get(this).getUserData(info.getAccount(this), KEY_NUM_PROCESSED_ENTRIES)?.toInt()
+                                                ?: 0
+                                        provider.query(syncAdapterUri(info.getAccount(this), RawContacts.CONTENT_URI),
+                                                emptyArray(), "${RawContacts.DELETED}=0",
+                                                null, null)!!.use { cursor ->
+                                            androidEntries = cursor.count
                                         }
                                     }
-                                    provider.query(syncAdapterUri(info.getAccount(this), Events.CONTENT_URI),
-                                            emptyArray(), "${Events.CALENDAR_ID}=? AND ${Events.ORIGINAL_ID} IS NULL AND ${Events.DELETED}=0",
-                                            arrayOf(calendarId.toString()), null)!!.use { cursor ->
-                                        androidEntries = cursor.count
+                                    is CalendarInfo -> {
+                                        val calendarId = provider.query(syncAdapterUri(info.getAccount(this), Calendars.CONTENT_URI),
+                                                arrayOf(Calendars._ID, COLUMN_NUM_PROCESSED_ENTRIES), "${Calendars.NAME}=?",
+                                                arrayOf(info.id), null)!!.use { calCursor ->
+                                            if (calCursor.moveToFirst()) {
+                                                processedEntries = if (calCursor.isNull(1)) 0 else calCursor.getInt(1)
+                                                calCursor.getLong(0)
+                                            } else {
+                                                null
+                                            }
+                                        }
+                                        provider.query(syncAdapterUri(info.getAccount(this), Events.CONTENT_URI),
+                                                emptyArray(), "${Events.CALENDAR_ID}=? AND ${Events.ORIGINAL_ID} IS NULL AND ${Events.DELETED}=0",
+                                                arrayOf(calendarId.toString()), null)!!.use { cursor ->
+                                            androidEntries = cursor.count
+                                        }
+                                    }
+                                    is TaskListInfo -> {
+                                        val taskList = info.getTaskList(this)
+                                        processedEntries = taskList?.numProcessedEntries ?: 0
+                                        androidEntries = taskList?.queryTasks("${TaskContract.Tasks._DELETED}=0", null)?.size
+                                                ?: 0
                                     }
                                 }
-                                is TaskListInfo -> {
-                                    val taskList = info.getTaskList(this)
-                                    processedEntries = taskList?.numProcessedEntries ?: 0
-                                    androidEntries = taskList?.queryTasks("${TaskContract.Tasks._DELETED}=0", null)?.size ?: 0
-                                }
+                            } finally {
+                                if (Build.VERSION.SDK_INT >= 24)
+                                    provider.close()
+                                else
+                                    @Suppress("DEPRECATION")
+                                    provider.release()
                             }
-                        } finally {
-                            if (Build.VERSION.SDK_INT >= 24)
-                                provider.close()
-                            else
-                                @Suppress("DEPRECATION")
-                                provider.release()
                         }
-
-                        val dialog = AlertDialog.Builder(this)
-                                .setTitle(R.string.entries_count_title)
-                                .setMessage(getString(R.string.entries_count_message, androidEntries, processedEntries, "…"))
-                                .setNeutralButton(android.R.string.ok) { dialog, _ ->
-                                    dialog.dismiss()
-                                }
-                                .create()
-                        val countJob = GlobalScope.launch {
-                            class Count(var count: Int)
-
-                            val latestAppId = getDecsync(info, this@MainActivity).latestAppId()
-                            val decsyncDir = decsyncDir
-                            val decsyncCount = if (decsyncDir != null) {
-                                val countDecsync = Decsync<Count>(decsyncDir, info.syncType, info.id, latestAppId)
-                                countDecsync.addListener(emptyList()) { _, entry, count ->
-                                    if (!isActive) throw CancellationException()
-                                    if (entry.value !is JsonNull) {
-                                        count.count++
-                                    }
-                                }
-                                val count = Count(0)
-                                countDecsync.executeStoredEntriesForPathPrefix(listOf("resources"), count)
-                                "%d".format(count.count)
-                            } else {
-                                "-"
-                            }
-                            dialog.setMessage(getString(R.string.entries_count_message, androidEntries, processedEntries, decsyncCount))
-                        }
-                        dialog.setOnDismissListener {
-                            countJob.cancel()
-                        }
-                        dialog.show()
                     }
+
+                    val dialog = AlertDialog.Builder(this)
+                            .setTitle(R.string.entries_count_title)
+                            .setMessage(getString(R.string.entries_count_message, androidEntries, processedEntries, "…"))
+                            .setNeutralButton(android.R.string.ok) { dialog, _ ->
+                                dialog.dismiss()
+                            }
+                            .create()
+                    val countJob = GlobalScope.launch {
+                        class Count(var count: Int)
+
+                        val decsyncDir = PrefUtils.getNativeFile(this@MainActivity)
+                        val decsyncCount = if (decsyncDir != null) {
+                            val latestAppId = getDecsync(info, this@MainActivity, decsyncDir).latestAppId()
+                            val countDecsync = Decsync<Count>(decsyncDir, info.syncType, info.id, latestAppId)
+                            countDecsync.addListener(emptyList()) { _, entry, count ->
+                                if (!isActive) throw CancellationException()
+                                if (entry.value !is JsonNull) {
+                                    count.count++
+                                }
+                            }
+                            val count = Count(0)
+                            countDecsync.executeStoredEntriesForPathPrefix(listOf("resources"), count)
+                            "%d".format(count.count)
+                        } else {
+                            "-"
+                        }
+                        dialog.setMessage(getString(R.string.entries_count_message, androidEntries, processedEntries, decsyncCount))
+                    }
+                    dialog.setOnDismissListener {
+                        countJob.cancel()
+                    }
+                    dialog.show()
                 }
             }
             true

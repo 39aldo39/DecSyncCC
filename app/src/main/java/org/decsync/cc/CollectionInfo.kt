@@ -76,12 +76,14 @@ class AddressBookInfo(id: String, name: String) :
     }
 
     override fun create(context: Context) {
+        val accountManager = AccountManager.get(context)
         val account = getAccount(context)
         val bundle = Bundle()
         bundle.putString("id", id)
-        AccountManager.get(context).addAccountExplicitly(account, null, bundle)
+        accountManager.addAccountExplicitly(account, null, bundle)
         ContentResolver.setSyncAutomatically(account, ContactsContract.AUTHORITY, true)
         ContentResolver.addPeriodicSync(account, ContactsContract.AUTHORITY, Bundle(), 60 * 60)
+        accountManager.setUserData(account, PrefUtils.IS_INIT_SYNC, "1")
     }
 
     override fun remove(context: Context) {
@@ -161,6 +163,7 @@ class CalendarInfo(id: String, name: String, color: Int?) :
             try {
                 provider.insert(syncAdapterUri(account, Calendars.CONTENT_URI), values)
                 AndroidCalendar.insertColors(provider, account) // Allow custom event colors
+                AccountManager.get(context).setUserData(account, "${PrefUtils.IS_INIT_SYNC}-$id", "1")
             } finally {
                 if (Build.VERSION.SDK_INT >= 24)
                     provider.close()
@@ -226,6 +229,7 @@ class TaskListInfo(id: String, name: String, color: Int?) :
                 ContentResolver.addPeriodicSync(account, authority, Bundle(), 60 * 60)
             }
             LocalTaskList.create(account, provider, this)
+            AccountManager.get(context).setUserData(account, "${PrefUtils.IS_INIT_SYNC}-$id", "1")
         }
     }
 
@@ -242,7 +246,7 @@ class TaskListInfo(id: String, name: String, color: Int?) :
     }
 
     fun getProvider(context: Context): TaskProvider? {
-        val providerName = getProviderName(context)
+        val providerName = getProviderName(context) ?: return null
         return TaskProvider.acquire(context, providerName)
     }
 

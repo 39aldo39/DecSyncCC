@@ -2,6 +2,6 @@
 <sync-adapter xmlns:android="http://schemas.android.com/apk/res/android"
     android:accountType="@string/account_type_tasks"
     android:contentAuthority="org.dmfs.tasks"
-    android:allowParallelSyncs="true"
+    android:allowParallelSyncs="false"
     android:supportsUploading="true"
     android:isAlwaysSyncable="true" />

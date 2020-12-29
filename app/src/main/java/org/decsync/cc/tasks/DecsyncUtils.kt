@@ -17,7 +17,7 @@ import java.io.StringReader
 const val COLUMN_OLD_COLOR = TaskContract.TaskLists.SYNC1
 const val COLUMN_NUM_PROCESSED_ENTRIES = TaskContract.TaskLists.SYNC2
 const val COLUMN_IS_NEW_TASK = TaskContract.Tasks.SYNC1
-private const val TAG = "DecSync Tasks"
+const val TAG = "DecSync Tasks"
 
 @ExperimentalStdlibApi
 object TasksDecsyncUtils {
@@ -41,6 +41,7 @@ object TasksDecsyncUtils {
             }
             "name" -> {
                 val name = entry.value.jsonPrimitive.content
+                if (extra.info.name == name) return
                 Log.d(TAG, "Rename task list ${extra.info.name} to $name")
 
                 val values = ContentValues()
@@ -83,7 +84,7 @@ object TasksDecsyncUtils {
         when (ical) {
             null -> {
                 if (storedTask == null) {
-                    Log.w(TAG, "Unknown task $uid cannot be deleted")
+                    Log.i(TAG, "Unknown task $uid cannot be deleted")
                 } else {
                     Log.d(TAG, "Delete task $uid")
                     storedTask.delete()
@@ -111,7 +112,7 @@ object TasksDecsyncUtils {
                     LocalTask(taskList, task).add()
                     addToNumProcessedEntries(extra, 1)
                 } else {
-                    Log.i(TAG, "Update task $uid")
+                    Log.d(TAG, "Update task $uid")
                     storedTask.update(task)
                 }
             }

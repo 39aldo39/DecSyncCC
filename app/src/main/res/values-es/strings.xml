@@ -24,7 +24,6 @@
     <string name="account_create_new_address_book">Crear nueva agenda de contactos</string>
     <string name="account_refresh_calendar_list">Acualizar lista de calendario</string>
     <string name="account_create_new_calendar">Crear nuevo calendario</string>
-    <string name="change_calendar_colors">Cambiar color de calendario</string>
     <string name="create_collection_title">Nombre para la nueva colección</string>
     <string name="rename_collection">Renombrar colección</string>
     <string name="rename_collection_title">Nuevo nombre para la colección</string>

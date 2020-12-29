@@ -12,6 +12,9 @@
     <item android:id="@+id/rename_collection"
           android:title="@string/rename_collection"/>
 
+    <item android:id="@+id/change_color_collection"
+          android:title="@string/change_color_collection"/>
+
     <item android:id="@+id/delete_collection"
           android:title="@string/delete_collection"/>
 

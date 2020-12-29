@@ -10,11 +10,6 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <item android:id="@+id/change_calendar_colors"
-        android:icon="@drawable/ic_change_calendar_colors"
-        android:title="@string/change_calendar_colors"
-        app:showAsAction="ifRoom"/>
-
     <item android:id="@+id/create_calendar"
         android:icon="@drawable/ic_add_light"
         android:title="@string/account_create_new_calendar"

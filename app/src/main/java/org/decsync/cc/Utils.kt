@@ -21,10 +21,6 @@ object Utils {
             R.string.tasks_app_tasks_org
     )
 
-    fun launchIntent(activity: Activity, packageName: String): Intent? {
-        return activity.packageManager.getLaunchIntentForPackage(packageName)
-    }
-
     fun appInstalled(activity: Activity, packageName: String): Boolean {
         return try {
             activity.packageManager.getPackageInfo(packageName, 0)
@@ -35,18 +31,13 @@ object Utils {
     }
 
     fun installApp(activity: Activity, packageName: String) {
-        val intent = installAppIntent(activity, packageName) ?: return
-        activity.startActivity(intent)
-    }
-
-    fun installAppIntent(activity: Activity, packageName: String): Intent? {
         val intent = Intent(Intent.ACTION_VIEW)
         intent.data = Uri.parse("market://details?id=$packageName")
         if (intent.resolveActivity(activity.packageManager) == null) {
             Toast.makeText(activity, R.string.no_app_store, Toast.LENGTH_SHORT).show()
-            return null
+            return
         }
-        return intent
+        activity.startActivity(intent)
     }
 
     fun parseColor(decsyncColor: String): Int? {
@@ -56,5 +47,9 @@ object Utils {
             Log.w(TAG, "Unknown color $decsyncColor", e)
             null
         }
+    }
+
+    fun colorToString(color: Int): String {
+        return String.format("#%06X", color and 0xFFFFFF)
     }
 }

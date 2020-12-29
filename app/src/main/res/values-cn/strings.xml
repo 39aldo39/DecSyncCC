@@ -7,8 +7,6 @@
   ~ http://www.gnu.org/licenses/gpl.html
   -->
 <resources>
-    <string name="app_name" translatable="false">DecSync CC</string>
-    <string name="title_activity_main" translatable="false">DecSync CC</string>
     <string name="title_activity_settings">设置</string>
     <string name="title_activity_intro">介绍</string>
     <string name="title_activity_saf_update">安卓更新</string>
@@ -16,9 +14,6 @@
     <string name="account_name_contacts">DecSync 联系人</string>
     <string name="account_name_calendars">DecSync 日历</string>
     <string name="account_name_tasks">DecSync 任务</string>
-    <string name="account_type_contacts" translatable="false">org.decsync.contacts</string>
-    <string name="account_type_calendars" translatable="false">org.decsync.calendars</string>
-    <string name="account_type_tasks" translatable="false">org.decsync.tasks</string>
     <string name="tasks_app_opentasks">OpenTasks</string>
     <string name="tasks_app_tasks_org">Tasks</string>
     <string name="no_app_store">没有应用商店可用</string>
@@ -37,13 +32,12 @@
     <string name="account_create_new_address_book">新建通讯簿</string>
     <string name="account_refresh_calendar_list">刷新日历列表</string>
     <string name="account_create_new_calendar">新建日历</string>
-    <string name="change_calendar_colors">更改日历颜色</string>
     <string name="account_create_new_task_list">新建任务列表</string>
     <string name="create_collection_title">新集合的名称</string>
     <string name="rename_collection">重命名集合</string>
     <string name="rename_collection_title">集合的新名称</string>
     <string name="delete_collection">删除集合</string>
-    <string name="delete_collection_title">你确定要删除一个或多个集合吗？</string>
+    <!--<string name="delete_collection_title">你确定要删除一个或多个集合吗？</string>-->
     <string name="no_task_app_title">未安装任务应用程序。 选择一款进行安装。</string>
     <string name="choose_task_app_title">安装了多款任务应用程序。 选择一款来使用。</string>
     <string name="entries_count">条目数</string>
@@ -89,9 +83,6 @@
     <string name="settings_decsync_dir_not_configured">未配置 DecSync 目录</string>
     <string name="settings_category_tasks">任务</string>
     <string name="settings_task_app">任务应用程序</string>
-    <string-array name="settings_task_app_values" translatable="false">
-        <item />
-    </string-array>
     <string-array name="settings_task_app_names">
         <item>无</item>
     </string-array>
@@ -99,11 +90,6 @@
     <string name="settings_decsync_task_lists_enabled_message">仍有一些任务列表处于启用状态。请在变更任务应用程序前，禁用所有任务列表。</string>
     <string name="settings_category_theme">主题</string>
     <string name="settings_theme">主题</string>
-    <string-array name="settings_theme_values" translatable="false">
-        <item>-1</item>
-        <item>1</item>
-        <item>2</item>
-    </string-array>
     <string-array name="settings_theme_names">
         <item>系统默认</item>
         <item>浅色</item>
