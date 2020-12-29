@@ -24,6 +24,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import org.decsync.cc.*
 import org.dmfs.tasks.contract.TaskContract
 import java.lang.Exception
+import java.lang.ref.WeakReference
 
 open class TasksService : Service() {
 
@@ -53,6 +54,12 @@ open class TasksService : Service() {
     }
 
     companion object {
+        /** Keep a list of running syncs to block multiple calls at the same time,
+         *  like run by some devices. Weak references are used for the case that a thread
+         *  is terminated and the `finally` block which cleans up [runningSyncs] is not
+         *  executed. */
+        private val runningSyncs = mutableListOf<WeakReference<Unit>>()
+
         @ExperimentalStdlibApi
         suspend fun sync(context: Context, account: Account, authority: String, provider: ContentProviderClient, startForeground: suspend (Int, Notification) -> Unit): Boolean {
             if (!PrefUtils.getUseSaf(context) &&
@@ -60,24 +67,33 @@ open class TasksService : Service() {
                 return false
             }
 
-            PrefUtils.checkAppUpgrade(context)
-
-            // Required for ical4android
-            Thread.currentThread().contextClassLoader = context.classLoader
-
-            val providerName = TaskProvider.ProviderName.fromAuthority(authority)
-            for (permission in providerName.permissions) {
-                if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
-                    return false
+            // Prevent multiple syncs of the same collection to be run
+            synchronized(runningSyncs) {
+                if (runningSyncs.any { it.get() == Unit }) {
+                    Log.w(TAG, "There is already another task sync running")
+                    return true
                 }
+                runningSyncs += WeakReference(Unit)
             }
-            val taskProvider = TaskProvider.fromProviderClient(context, providerName, provider)
-
-            // make sure account can be seen by task provider
-            if (Build.VERSION.SDK_INT >= 26)
-                AccountManager.get(context).setAccountVisibility(account, providerName.packageName, AccountManager.VISIBILITY_VISIBLE)
 
             try {
+                PrefUtils.checkAppUpgrade(context)
+
+                // Required for ical4android
+                Thread.currentThread().contextClassLoader = context.classLoader
+
+                val providerName = TaskProvider.ProviderName.fromAuthority(authority)
+                for (permission in providerName.permissions) {
+                    if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
+                        return false
+                    }
+                }
+                val taskProvider = TaskProvider.fromProviderClient(context, providerName, provider)
+
+                // make sure account can be seen by task provider
+                if (Build.VERSION.SDK_INT >= 26)
+                    AccountManager.get(context).setAccountVisibility(account, providerName.packageName, AccountManager.VISIBILITY_VISIBLE)
+
                 val taskLists = AndroidTaskList.find(account, taskProvider, LocalTaskList.Factory, null, null)
                 val decsyncDir = PrefUtils.getNativeFile(context)
                         ?: throw Exception(context.getString(R.string.settings_decsync_dir_not_configured))
@@ -150,6 +166,10 @@ open class TasksService : Service() {
                     notify(0, builder.build())
                 }
                 return false
+            } finally {
+                synchronized(runningSyncs) {
+                    runningSyncs.removeAll { it.get() == null || it.get() == Unit}
+                }
             }
 
             return true

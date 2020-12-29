@@ -41,6 +41,7 @@ import androidx.work.WorkerParameters
 import at.bitfire.vcard4android.AndroidAddressBook
 import kotlinx.coroutines.runBlocking
 import org.decsync.cc.*
+import java.lang.ref.WeakReference
 
 class ContactsService : Service() {
 
@@ -70,6 +71,12 @@ class ContactsService : Service() {
     }
 
     companion object {
+        /** Keep a list of running syncs to block multiple calls at the same time,
+         *  like run by some devices. Weak references are used for the case that a thread
+         *  is terminated and the `finally` block which cleans up [runningSyncs] is not
+         *  executed. */
+        private val runningSyncs = mutableListOf<WeakReference<String>>()
+
         @ExperimentalStdlibApi
         suspend fun sync(context: Context, account: Account, provider: ContentProviderClient, startForeground: suspend (Int, Notification) -> Unit): Boolean {
             if (!PrefUtils.getUseSaf(context) &&
@@ -81,10 +88,20 @@ class ContactsService : Service() {
                 return false
             }
 
-            PrefUtils.checkAppUpgrade(context)
+            val bookId = AccountManager.get(context).getUserData(account, "id")
+
+            // Prevent multiple syncs of the same collection to be run
+            synchronized(runningSyncs) {
+                if (runningSyncs.any { it.get() == bookId }) {
+                    Log.w(TAG, "There is already another sync running for address book $bookId")
+                    return true
+                }
+                runningSyncs += WeakReference(bookId)
+            }
 
             try {
-                val bookId = AccountManager.get(context).getUserData(account, "id")
+                PrefUtils.checkAppUpgrade(context)
+
                 val info = AddressBookInfo(bookId, account.name)
                 val extra = Extra(info, context, provider)
                 val decsyncDir = PrefUtils.getNativeFile(context)
@@ -164,6 +181,10 @@ class ContactsService : Service() {
                     notify(0, builder.build())
                 }
                 return false
+            } finally {
+                synchronized(runningSyncs) {
+                    runningSyncs.removeAll { it.get() == null || it.get() == bookId}
+                }
             }
             return true
         }
