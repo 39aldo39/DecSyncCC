@@ -80,11 +80,9 @@ class GeneralPrefsActivity : AppCompatActivity() {
             if (PrefUtils.getUseSaf(requireActivity())) {
                 initDecsyncDir(true)
                 initDecsyncFile(false)
-                initDecsyncFileReset(false)
             } else {
                 initDecsyncDir(false)
                 initDecsyncFile(true)
-                initDecsyncFileReset(true)
             }
             initTaskApp()
             initTheme()
@@ -122,29 +120,9 @@ class GeneralPrefsActivity : AppCompatActivity() {
                         val intent = Intent(requireActivity(), FilePickerActivity::class.java)
                         intent.putExtra(FilePickerActivity.EXTRA_ALLOW_CREATE_DIR, true)
                         intent.putExtra(FilePickerActivity.EXTRA_MODE, FilePickerActivity.MODE_DIR)
-                        intent.putExtra(FilePickerActivity.EXTRA_START_PATH, PrefUtils.getDecsyncFile(requireActivity()))
+                        // Always start on the default DecSync dir, as the previously selected one may be inaccessible
+                        intent.putExtra(FilePickerActivity.EXTRA_START_PATH, PrefUtils.defaultDecsyncDir)
                         startActivityForResult(intent, CHOOSE_DECSYNC_DIRECTORY)
-                    }
-                    true
-                }
-            } else {
-                preference.isVisible = false
-            }
-        }
-
-        private fun initDecsyncFileReset(visible: Boolean) {
-            val preference = findPreference<Preference>(PrefUtils.DECSYNC_FILE_RESET)!!
-            if (visible) {
-                preference.setOnPreferenceClickListener {
-                    if (!checkCollectionEnabled()) {
-                        AlertDialog.Builder(requireActivity())
-                                .setTitle(R.string.settings_decsync_file_reset_title)
-                                .setMessage(getString(R.string.settings_decsync_file_reset_message, PrefUtils.defaultDecsyncDir))
-                                .setNegativeButton(android.R.string.no) { _, _ -> }
-                                .setPositiveButton(android.R.string.yes) { _, _ ->
-                                    setDecsyncFile(File(PrefUtils.defaultDecsyncDir))
-                                }
-                                .show()
                     }
                     true
                 }

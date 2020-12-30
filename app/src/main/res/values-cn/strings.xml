@@ -81,9 +81,6 @@
     <string name="settings_category_decsync">DecSync</string>
     <string name="settings_decsync_directory">选择 DecSync 目录</string>
     <string name="settings_decsync_file">DecSync 目录</string>
-    <string name="settings_decsync_file_reset">重置 DecSync 目录</string>
-    <string name="settings_decsync_file_reset_title">重置 DecSync 目录</string>
-    <string name="settings_decsync_file_reset_message">你想重置 DecSync 目录为默认位置 \'%s\'吗？</string>
     <string name="settings_decsync_collections_enabled_title">启用集锦</string>
     <string name="settings_decsync_collections_enabled_message">仍然有一些集锦处于启用状态。请在更改 DecSync 目录前禁用所有集锦。</string>
     <string name="settings_decsync_dir_not_configured">未配置 DecSync 目录</string>

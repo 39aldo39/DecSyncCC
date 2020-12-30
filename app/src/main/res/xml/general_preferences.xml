@@ -28,12 +28,6 @@
             android:key="decsync.directory"
             android:title="@string/settings_decsync_file"/>
 
-        <Preference
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:key="decsync.directory_reset"
-            android:title="@string/settings_decsync_file_reset"/>
-
     </PreferenceCategory>
 
     <PreferenceCategory

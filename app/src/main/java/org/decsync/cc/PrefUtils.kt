@@ -37,7 +37,6 @@ import java.util.concurrent.TimeUnit
 object PrefUtils {
     const val DECSYNC_USE_SAF = "decsync.use_saf"
     const val DECSYNC_FILE = "decsync.directory"
-    const val DECSYNC_FILE_RESET = "decsync.directory_reset"
     const val APP_VERSION = "app.version"
     const val INTRO_DONE = "intro.done"
     const val UPDATE_FORCES_SAF = "update_forces_saf"

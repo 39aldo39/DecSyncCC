@@ -62,9 +62,6 @@
     <string name="settings_about">Acerca de DecSync CC</string>
     <string name="settings_category_decsync">DecSync</string>
     <string name="settings_decsync_file">Carpeta DecSync</string>
-    <string name="settings_decsync_file_reset">Reestablecer carpeta DecSync</string>
-    <string name="settings_decsync_file_reset_title">Reestablecer carpeta DecSync</string>
-    <string name="settings_decsync_file_reset_message">¿Desea restablecer el directorio de DecSync a la ubicación predeterminada \'%s\'?</string>
     <string name="settings_decsync_collections_enabled_title">Colecciones activas</string>
     <string name="settings_decsync_collections_enabled_message">Todavía hay algunas colecciones activas. Desactiva todas las colecciones antes de cambiar la carpeta de DecSync.</string>
     <string name="settings_decsync_dir_not_configured">No se ajustó la carpeta DecSync</string>
