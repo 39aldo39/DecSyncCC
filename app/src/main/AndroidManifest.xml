@@ -58,8 +58,7 @@
         </service>
         <service
             android:name=".calendars.CalendarsService"
-            android:exported="true"
-            android:process=":sync">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.content.SyncAdapter" />
             </intent-filter>
@@ -69,8 +68,7 @@
         </service>
         <service
             android:name=".contacts.ContactsService"
-            android:exported="true"
-            android:process=":sync">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.content.SyncAdapter" />
             </intent-filter>
@@ -83,8 +81,7 @@
         </service>
         <service
             android:name=".tasks.OpenTasksService"
-            android:exported="true"
-            android:process=":sync">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.content.SyncAdapter"/>
             </intent-filter>
@@ -94,8 +91,7 @@
         </service>
         <service
             android:name=".tasks.TasksOrgService"
-            android:exported="true"
-            android:process=":sync">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.content.SyncAdapter"/>
             </intent-filter>

@@ -109,9 +109,6 @@
         <item>Light</item>
         <item>Dark</item>
     </string-array>
-    <string name="settings_category_sync">Synchronization</string>
-    <string name="settings_offline_sync">Synchronize offline</string>
-    <string name="settings_offline_sync_description">Synchronize the collections even when the device is offline</string>
 
     <!-- Notification channel -->
     <string name="channel_init_sync_name">Initial sync</string>

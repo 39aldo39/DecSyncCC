@@ -109,9 +109,6 @@
         <item>浅色</item>
         <item>深色</item>
     </string-array>
-    <string name="settings_category_sync">同步</string>
-    <string name="settings_offline_sync">离线同步</string>
-    <string name="settings_offline_sync_description">即使设备处于脱机状态也同步集锦</string>
 
     <!-- Notification channel -->
     <string name="channel_init_sync_name">初始同步</string>

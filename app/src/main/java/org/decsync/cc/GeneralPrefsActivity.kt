@@ -88,7 +88,6 @@ class GeneralPrefsActivity : AppCompatActivity() {
             }
             initTaskApp()
             initTheme()
-            initOfflineSync()
         }
 
         private fun initDecsyncDir(visible: Boolean) {
@@ -274,15 +273,6 @@ class GeneralPrefsActivity : AppCompatActivity() {
             preference.setOnPreferenceChangeListener { _, newValue ->
                 val mode = Integer.parseInt(newValue as String)
                 AppCompatDelegate.setDefaultNightMode(mode)
-                true
-            }
-        }
-
-        private fun initOfflineSync() {
-            val context = requireActivity()
-            val preference = findPreference<Preference>(PrefUtils.OFFLINE_SYNC)!!
-            preference.setOnPreferenceChangeListener { _, enabled ->
-                PrefUtils.updateOfflineSync(context, enabled as Boolean)
                 true
             }
         }

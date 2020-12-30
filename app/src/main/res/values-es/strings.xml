@@ -75,9 +75,6 @@
         <item>Claro</item>
         <item>Oscuro</item>
     </string-array>
-    <string name="settings_category_sync">Sincronización</string>
-    <string name="settings_offline_sync">Sincronizar sin conexión</string>
-    <string name="settings_offline_sync_description">Sincroniza las colecciones cuando el dispositivo no está conectado</string>
 
     <!-- Notification channel -->
     <string name="channel_init_sync_name">Iniciar sincronización</string>

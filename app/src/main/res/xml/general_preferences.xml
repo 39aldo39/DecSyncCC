@@ -68,19 +68,4 @@
 
     </PreferenceCategory>
 
-    <PreferenceCategory
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:title="@string/settings_category_sync">
-
-        <CheckBoxPreference
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:key="offline_sync"
-            android:defaultValue="false"
-            android:title="@string/settings_offline_sync"
-            android:summary="@string/settings_offline_sync_description"/>
-
-    </PreferenceCategory>
-
 </PreferenceScreen>

@@ -44,16 +44,12 @@ object PrefUtils {
     const val OWN_APP_ID = "own_app_id"
     const val HINT_BATTERY_OPTIMIZATIONS = "hint.battery_optimizations"
     const val THEME = "theme"
-    const val OFFLINE_SYNC = "offline_sync"
-    const val OFFLINE_SYNC_CALENDARS = "offline_sync.calendars"
-    const val OFFLINE_SYNC_CONTACTS = "offline_sync.contacts"
-    const val OFFLINE_SYNC_TASKS = "offline_sync.tasks"
     const val CALENDAR_ACCOUNT_NAME = "calendar_account_name"
     const val TASKS_ACCOUNT_NAME = "tasks_account_name"
     const val TASKS_AUTHORITY = "tasks_authority"
     const val IS_INIT_SYNC = "is_init_sync"
 
-    val currentAppVersion = 3
+    val currentAppVersion = 4
     val defaultDecsyncDir = "${Environment.getExternalStorageDirectory()}/DecSync"
 
     fun getAppVersion(context: Context): Int {
@@ -154,60 +150,17 @@ object PrefUtils {
         AppCompatDelegate.setDefaultNightMode(mode)
     }
 
-    fun getOfflineSync(context: Context): Boolean {
+    fun getIsInitSync(context: Context, info: CollectionInfo): Boolean {
         val settings = PreferenceManager.getDefaultSharedPreferences(context)
-        return settings.getBoolean(OFFLINE_SYNC, false)
+        val key = "${IS_INIT_SYNC}-${info.syncType}-${info.id}"
+        return settings.getBoolean(key, false)
     }
 
-    fun updateOfflineSync(context: Context, doOfflineSync: Boolean) {
-        updateOfflineSyncAddressBooks(context, doOfflineSync)
-        updateOfflineSyncCalendars(context, doOfflineSync)
-        updateOfflineSyncTaskLists(context, doOfflineSync)
-    }
-
-    fun updateOfflineSyncAddressBooks(context: Context, doOfflineSync: Boolean) {
-        val workManager = WorkManager.getInstance(context)
-        if (doOfflineSync) {
-            GlobalScope.launch {
-                val workInfos = workManager.getWorkInfosForUniqueWork(OFFLINE_SYNC_CONTACTS).await()
-                if (workInfos.all { it.state != WorkInfo.State.RUNNING }) {
-                    val workRequest = PeriodicWorkRequest.Builder(ContactsWorker::class.java, 1, TimeUnit.HOURS).build()
-                    workManager.enqueueUniquePeriodicWork(OFFLINE_SYNC_CONTACTS, ExistingPeriodicWorkPolicy.REPLACE, workRequest)
-                }
-            }
-        } else {
-            workManager.cancelAllWorkByTag(OFFLINE_SYNC_CONTACTS)
-        }
-    }
-
-    fun updateOfflineSyncCalendars(context: Context, doOfflineSync: Boolean) {
-        val workManager = WorkManager.getInstance(context)
-        if (doOfflineSync) {
-            GlobalScope.launch {
-                val workInfos = workManager.getWorkInfosForUniqueWork(OFFLINE_SYNC_CALENDARS).await()
-                if (workInfos.all { it.state != WorkInfo.State.RUNNING }) {
-                    val workRequest = PeriodicWorkRequest.Builder(CalendarsWorker::class.java, 1, TimeUnit.HOURS).build()
-                    workManager.enqueueUniquePeriodicWork(OFFLINE_SYNC_CALENDARS, ExistingPeriodicWorkPolicy.REPLACE, workRequest)
-                }
-            }
-        } else {
-            workManager.cancelAllWorkByTag(OFFLINE_SYNC_CALENDARS)
-        }
-    }
-
-    fun updateOfflineSyncTaskLists(context: Context, doOfflineSync: Boolean) {
-        val workManager = WorkManager.getInstance(context)
-        if (doOfflineSync) {
-            GlobalScope.launch {
-                val workInfos = workManager.getWorkInfosForUniqueWork(OFFLINE_SYNC_TASKS).await()
-                if (workInfos.all { it.state != WorkInfo.State.RUNNING }) {
-                    val workRequest = PeriodicWorkRequest.Builder(TasksWorker::class.java, 1, TimeUnit.HOURS).build()
-                    workManager.enqueueUniquePeriodicWork(OFFLINE_SYNC_TASKS, ExistingPeriodicWorkPolicy.REPLACE, workRequest)
-                }
-            }
-        } else {
-            workManager.cancelAllWorkByTag(OFFLINE_SYNC_TASKS)
-        }
+    fun putIsInitSync(context: Context, info: CollectionInfo, value: Boolean) {
+        val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
+        val key = "${IS_INIT_SYNC}-${info.syncType}-${info.id}"
+        editor.putBoolean(key, value)
+        editor.apply()
     }
 
     fun getCalendarAccountName(context: Context): String {
@@ -252,6 +205,7 @@ object PrefUtils {
         editor.apply()
     }
 
+    @ExperimentalStdlibApi
     fun checkAppUpgrade(context: Context) {
         val appVersion = getAppVersion(context)
         if (appVersion != currentAppVersion) {
@@ -262,6 +216,11 @@ object PrefUtils {
                 }
                 if (appVersion < 3) {
                     putIntroDone(context, true)
+                }
+                if (appVersion < 4) {
+                    ContactsWorker.enqueueAll(context)
+                    CalendarsWorker.enqueueAll(context)
+                    TasksWorker.enqueueAll(context)
                 }
             }
             putAppVersion(context, currentAppVersion)
