@@ -39,7 +39,7 @@ class CalendarsWorker(context: Context, params: WorkerParameters) : CollectionWo
     override val notificationTitleResId = R.string.notification_adding_events
 
     override fun getCollectionInfo(id: String, name: String): CollectionInfo {
-        return CalendarInfo(id, name, null)
+        return CalendarInfo(id, name, null, false)
     }
 
     @ExperimentalStdlibApi
@@ -143,7 +143,7 @@ class CalendarsWorker(context: Context, params: WorkerParameters) : CollectionWo
                     while (calCursor.moveToNext()) {
                         val id = calCursor.getString(0)
                         val name = calCursor.getString(1)
-                        val info = CalendarInfo(id, name, null)
+                        val info = CalendarInfo(id, name, null, false)
                         enqueue(context, info)
                     }
                 }

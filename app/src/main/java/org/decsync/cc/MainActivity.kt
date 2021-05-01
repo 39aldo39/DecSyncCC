@@ -23,10 +23,10 @@ import android.os.PowerManager
 import android.provider.CalendarContract
 import android.provider.CalendarContract.Calendars
 import android.provider.CalendarContract.Events
-import android.provider.ContactsContract
 import android.provider.ContactsContract.RawContacts
 import android.provider.Settings
 import android.util.Log
+import android.util.TypedValue
 import android.view.*
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
@@ -34,7 +34,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.work.*
 import at.bitfire.ical4android.AndroidTaskList
 import at.bitfire.ical4android.TaskProvider
 import com.flask.colorpicker.ColorPickerView
@@ -206,11 +205,11 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         val collectionInfos = decsyncIds.mapNotNull { id ->
             val info = Decsync.getStaticInfo(decsyncDir, "contacts", id)
             val deleted = info[JsonPrimitive("deleted")]?.jsonPrimitive?.boolean ?: false
-            if (!deleted) {
-                val name = info[JsonPrimitive("name")]?.jsonPrimitive?.content ?: id
-                AddressBookInfo(id, name)
-            } else {
+            if (deleted && !PrefUtils.getShowDeletedCollections(this)) {
                 null
+            } else {
+                val name = info[JsonPrimitive("name")]?.jsonPrimitive?.content ?: id
+                AddressBookInfo(id, name, deleted)
             }
         }
 
@@ -228,7 +227,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         val accountManager = AccountManager.get(this)
         val infos = accountManager.getAccountsByType(getString(R.string.account_type_contacts)).map { account ->
             val bookId = accountManager.getUserData(account, "id")
-            AddressBookInfo(bookId, account.name)
+            AddressBookInfo(bookId, account.name, false)
         }.filter { info ->
             info.id !in decsyncIds
         }
@@ -247,13 +246,13 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         val collectionInfos = decsyncIds.mapNotNull {
             val info = Decsync.getStaticInfo(decsyncDir, "calendars", it)
             val deleted = info[JsonPrimitive("deleted")]?.jsonPrimitive?.boolean ?: false
-            if (!deleted) {
+            if (deleted && !PrefUtils.getShowDeletedCollections(this)) {
+                null
+            } else {
                 val name = info[JsonPrimitive("name")]?.jsonPrimitive?.content ?: it
                 val decsyncColor = info[JsonPrimitive("color")]?.jsonPrimitive?.content
                 val color = decsyncColor?.let(Utils::parseColor)
-                CalendarInfo(it, name, color)
-            } else {
-                null
+                CalendarInfo(it, name, color, deleted)
             }
         }
 
@@ -281,7 +280,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             val name = cursor.getString(1)
                             val color = cursor.getInt(2)
                             if (decsyncId !in decsyncIds) {
-                                infos.add(CalendarInfo(decsyncId, name, color))
+                                infos.add(CalendarInfo(decsyncId, name, color, false))
                             }
                         }
                     }
@@ -309,7 +308,9 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         val collectionInfos = decsyncIds.mapNotNull {
             val info = Decsync.getStaticInfo(decsyncDir, "tasks", it)
             val deleted = info[JsonPrimitive("deleted")]?.jsonPrimitive?.boolean ?: false
-            if (!deleted) {
+            if (deleted && !PrefUtils.getShowDeletedCollections(this)) {
+                null
+            } else {
                 val name = info[JsonPrimitive("name")]?.jsonPrimitive?.content ?: it
                 val color = info[JsonPrimitive("color")]?.jsonPrimitive?.content
                 val colorInt = try {
@@ -318,9 +319,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     Log.w(TAG, "Unknown color $color", e)
                     null
                 }
-                TaskListInfo(it, name, colorInt)
-            } else {
-                null
+                TaskListInfo(it, name, colorInt, deleted)
             }
         }
 
@@ -364,7 +363,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     val name = taskList.name ?: continue
                     val color = taskList.color
                     if (decsyncId !in decsyncIds) {
-                        infos.add(TaskListInfo(decsyncId, name, color))
+                        infos.add(TaskListInfo(decsyncId, name, color, false))
                     }
                 }
             } finally {
@@ -414,6 +413,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.main_activity, menu)
+        menu.findItem(R.id.show_deleted_collections).isChecked = PrefUtils.getShowDeletedCollections(this)
         return true
     }
 
@@ -425,6 +425,12 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                 TasksWorker.enqueueAll(this)
 
                 Snackbar.make(findViewById(R.id.parent), R.string.account_synchronizing_now, Snackbar.LENGTH_LONG).show()
+            }
+            R.id.show_deleted_collections -> {
+                val newValue = !PrefUtils.getShowDeletedCollections(this)
+                PrefUtils.putShowDeletedCollections(this, newValue)
+                item.isChecked = newValue
+                onResume()
             }
             R.id.settings -> {
                 val intent = Intent(this, GeneralPrefsActivity::class.java)
@@ -453,7 +459,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                             val name = input.text.toString()
                             if (name.isNotBlank()) {
                                 val id = UUID.randomUUID().toString()
-                                val info = AddressBookInfo(id, name)
+                                val info = AddressBookInfo(id, name, false)
                                 GlobalScope.launch {
                                     setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
                                 }
@@ -481,7 +487,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                     setPositiveButton(android.R.string.ok) { _, color, _ ->
                                         GlobalScope.launch {
                                             val id = UUID.randomUUID().toString()
-                                            val info = CalendarInfo(id, name, color)
+                                            val info = CalendarInfo(id, name, color, false)
                                             setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
                                             setCollectionInfo(info, JsonPrimitive("color"), JsonPrimitive(Utils.colorToString(color)))
                                         }
@@ -512,7 +518,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                                     setPositiveButton(android.R.string.ok) { _, color, _ ->
                                         GlobalScope.launch {
                                             val id = UUID.randomUUID().toString()
-                                            val info = TaskListInfo(id, name, color)
+                                            val info = TaskListInfo(id, name, color, false)
                                             setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
                                             setCollectionInfo(info, JsonPrimitive("color"), JsonPrimitive(Utils.colorToString(color)))
                                         }
@@ -672,7 +678,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                 }
                 R.id.delete_collection -> {
                     AlertDialog.Builder(this)
-                            .setTitle(getString(R.string.delete_collection_title, info.name))
+                            .setMessage(getString(R.string.delete_collection_title, info.name))
                             .setPositiveButton(android.R.string.yes) { _, _ ->
                                 GlobalScope.launch {
                                     setCollectionInfo(info, JsonPrimitive("deleted"), JsonPrimitive(true))
@@ -771,6 +777,60 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     }
                     dialog.show()
                 }
+                R.id.manage_decsync_data -> {
+                    val typedValue = TypedValue()
+                    var normalColor = Color.GRAY // Default value
+                    if (theme.resolveAttribute(android.R.attr.colorForeground, typedValue, true)) {
+                        normalColor = typedValue.data
+                    }
+                    val params = DecsyncPrefUtils.Params(
+                            ownAppId = PrefUtils.getOwnAppId(this),
+                            colorNormal = normalColor
+                    )
+                    val decsyncDir = decsyncDir
+                    if (decsyncDir != null) {
+                        DecsyncPrefUtils.manageDecsyncData(this, decsyncDir, info.syncType, info.id, params)
+                    }
+                }
+            }
+            true
+        }
+        popup.show()
+
+        // long click was handled
+        true
+    }
+
+
+    private val onDeletedActionOverflowListener = { anchor: View, info: CollectionInfo ->
+        val popup = PopupMenu(this, anchor, Gravity.END)
+        popup.inflate(R.menu.account_collection_operations_deleted)
+
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.restore_collection -> {
+                    GlobalScope.launch {
+                        setCollectionInfo(info, JsonPrimitive("deleted"), JsonPrimitive(false))
+                    }
+                }
+                R.id.perm_delete_collection -> {
+                    AlertDialog.Builder(this)
+                            .setMessage(getString(R.string.perm_delete_collection_title, info.name))
+                            .setPositiveButton(android.R.string.yes) { _, _ ->
+                                val decsyncDir = decsyncDir
+                                if (decsyncDir != null) {
+                                    DecsyncPrefUtils.permDeleteCollectionUsingWorker(this, decsyncDir, info.syncType, info.id)
+                                    val adapter = when (info) {
+                                        is AddressBookInfo -> address_books.adapter
+                                        is CalendarInfo -> calendars.adapter
+                                        is TaskListInfo -> task_lists.adapter
+                                    } as CollectionAdapter
+                                    adapter.remove(info)
+                                }
+                            }
+                            .setNegativeButton(android.R.string.no) { _, _ -> }
+                            .show()
+                }
             }
             true
         }
@@ -820,10 +880,13 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
         override fun getView(position: Int, v: View?, parent: ViewGroup): View {
             val v = v ?: LayoutInflater.from(context).inflate(R.layout.account_item, parent, false)
             val info = getItem(position)!!
-            val isChecked = info.isEnabled(context)
+            val isChecked = !info.deleted && info.isEnabled(context)
+
+            v.isEnabled = !info.deleted
 
             val checked = v.findViewById<CheckBox>(R.id.checked)
             checked.isChecked = isChecked
+            checked.isEnabled = !info.deleted
 
             val vColor = v.findViewById<View>(R.id.color)
             vColor.visibility = info.color?.let {
@@ -833,10 +896,12 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
             val tv = v.findViewById<TextView>(R.id.title)
             tv.text = info.name
+            tv.isEnabled = !info.deleted
 
             v.findViewById<ImageView>(R.id.action_overflow).setOnClickListener { view ->
                 (context as? MainActivity)?.let {
-                    it.onActionOverflowListener(view, info)
+                    val listener = if (info.deleted) it.onDeletedActionOverflowListener else it.onActionOverflowListener
+                    listener(view, info)
                 }
             }
 

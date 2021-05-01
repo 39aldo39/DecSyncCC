@@ -45,7 +45,7 @@ class ContactsWorker(context: Context, params: WorkerParameters) : CollectionWor
     override val notificationTitleResId = R.string.notification_adding_contacts
 
     override fun getCollectionInfo(id: String, name: String): CollectionInfo {
-        return AddressBookInfo(id, name)
+        return AddressBookInfo(id, name, false)
     }
 
     @ExperimentalStdlibApi
@@ -123,7 +123,7 @@ class ContactsWorker(context: Context, params: WorkerParameters) : CollectionWor
                 for (account in accounts) {
                     val id = AccountManager.get(context).getUserData(account, "id")
                     val name = account.name
-                    val info = AddressBookInfo(id, name)
+                    val info = AddressBookInfo(id, name, false)
                     enqueue(context, info)
                 }
             } finally {

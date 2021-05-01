@@ -7,6 +7,11 @@
         android:title="@string/account_synchronize_now"
         app:showAsAction="ifRoom"/>
 
+    <item android:id="@+id/show_deleted_collections"
+        android:title="@string/account_show_deleted_collections"
+        android:checkable="true"
+        app:showAsAction="never"/>
+
     <item android:id="@+id/settings"
         android:title="@string/account_settings"
         app:showAsAction="never"/>

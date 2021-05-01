@@ -47,6 +47,7 @@ object PrefUtils {
     const val TASKS_ACCOUNT_NAME = "tasks_account_name"
     const val TASKS_AUTHORITY = "tasks_authority"
     const val IS_INIT_SYNC = "is_init_sync"
+    const val SHOW_DELETED_COLLECTIONS = "show_deleted_collections"
 
     val currentAppVersion = 4
     val defaultDecsyncDir = "${Environment.getExternalStorageDirectory()}/DecSync"
@@ -159,6 +160,17 @@ object PrefUtils {
         val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
         val key = "${IS_INIT_SYNC}-${info.syncType}-${info.id}"
         editor.putBoolean(key, value)
+        editor.apply()
+    }
+
+    fun getShowDeletedCollections(context: Context): Boolean {
+        val settings = PreferenceManager.getDefaultSharedPreferences(context)
+        return settings.getBoolean(SHOW_DELETED_COLLECTIONS, false)
+    }
+
+    fun putShowDeletedCollections(context: Context, value: Boolean) {
+        val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
+        editor.putBoolean(SHOW_DELETED_COLLECTIONS, value)
         editor.apply()
     }
 

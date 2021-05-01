@@ -20,7 +20,7 @@ class TasksWorker(context: Context, params: WorkerParameters) : CollectionWorker
 
     @ExperimentalStdlibApi
     override fun getCollectionInfo(id: String, name: String): CollectionInfo {
-        return TaskListInfo(id, name, null)
+        return TaskListInfo(id, name, null, false)
     }
 
     @ExperimentalStdlibApi
@@ -103,7 +103,7 @@ class TasksWorker(context: Context, params: WorkerParameters) : CollectionWorker
                 val taskProvider = TaskProvider.fromProviderClient(context, providerName, provider)
                 val taskLists = AndroidTaskList.find(account, taskProvider, LocalTaskList.Factory, null, null)
                 for (taskList in taskLists) {
-                    val info = TaskListInfo(taskList.syncId!!, taskList.name!!, null)
+                    val info = TaskListInfo(taskList.syncId!!, taskList.name!!, null, false)
                     enqueue(context, info)
                 }
             } finally {

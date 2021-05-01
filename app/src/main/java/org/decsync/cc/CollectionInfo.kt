@@ -42,7 +42,8 @@ sealed class CollectionInfo (
         val syncType: String,
         val id: String,
         val name: String,
-        val color: Int?
+        val color: Int?,
+        val deleted: Boolean
 ) {
     val notificationId = 31 * id.hashCode() + syncType.hashCode()
 
@@ -54,8 +55,8 @@ sealed class CollectionInfo (
     abstract fun getPermissions(context: Context): List<String>
 }
 
-class AddressBookInfo(id: String, name: String) :
-        CollectionInfo("contacts", id, name, null) {
+class AddressBookInfo(id: String, name: String, deleted: Boolean) :
+        CollectionInfo("contacts", id, name, null, deleted) {
     override fun getAccount(context: Context): Account {
         val accountName = name
         val accountType = context.getString(R.string.account_type_contacts)
@@ -103,8 +104,8 @@ class AddressBookInfo(id: String, name: String) :
     }
 }
 
-class CalendarInfo(id: String, name: String, color: Int?) :
-        CollectionInfo("calendars", id, name, color) {
+class CalendarInfo(id: String, name: String, color: Int?, deleted: Boolean) :
+        CollectionInfo("calendars", id, name, color, deleted) {
     override fun getAccount(context: Context): Account {
         val accountName = PrefUtils.getCalendarAccountName(context)
         val accountType = context.getString(R.string.account_type_calendars)
@@ -203,8 +204,8 @@ class CalendarInfo(id: String, name: String, color: Int?) :
 }
 
 @ExperimentalStdlibApi
-class TaskListInfo(id: String, name: String, color: Int?) :
-        CollectionInfo("tasks", id, name, color) {
+class TaskListInfo(id: String, name: String, color: Int?, deleted: Boolean) :
+        CollectionInfo("tasks", id, name, color, deleted) {
     override fun getAccount(context: Context): Account {
         val accountName = PrefUtils.getTasksAccountName(context)
         val accountType = context.getString(R.string.account_type_tasks)

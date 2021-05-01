@@ -21,4 +21,7 @@
     <item android:id="@+id/entries_count"
           android:title="@string/entries_count"/>
 
+    <item android:id="@+id/manage_decsync_data"
+        android:title="@string/manage_decsync_data"/>
+
 </menu>

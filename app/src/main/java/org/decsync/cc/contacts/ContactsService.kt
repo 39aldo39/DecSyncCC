@@ -48,7 +48,7 @@ class ContactsService : Service() {
             // Only queue as the SyncAdapter is canceled when it doesn't use the internet in the first minute
             // Mainly used to get notified about changes in the data
             val id = AccountManager.get(context).getUserData(account, "id")
-            val info = AddressBookInfo(id, account.name)
+            val info = AddressBookInfo(id, account.name, false)
             CollectionWorker.enqueue(context, info)
         }
     }

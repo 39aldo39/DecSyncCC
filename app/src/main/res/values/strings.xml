@@ -31,6 +31,7 @@
     <string name="account_task_lists">Task lists</string>
     <string name="account_task_lists_unknown">Task lists (unknown)</string>
     <string name="account_synchronize_now">Synchronize now</string>
+    <string name="account_show_deleted_collections">Show deleted collections</string>
     <string name="account_synchronizing_now">Synchronizing now</string>
     <string name="account_synchronize_this_collection">synchronize this collection</string>
     <string name="account_refresh_address_book_list">Refresh address book list</string>
@@ -44,11 +45,15 @@
     <string name="change_color_collection">Change color</string>
     <string name="delete_collection">Delete collection</string>
     <string name="delete_collection_title">Are you sure you want to delete the collection \'%s\'?</string>
+    <string name="restore_collection">Restore collection</string>
+    <string name="perm_delete_collection">Permanently delete collection</string>
+    <string name="perm_delete_collection_title">Are you sure you want to permanently delete the collection \'%s\'?</string>
     <string name="no_task_app_title">No task apps installed. Choose one to install.</string>
     <string name="choose_task_app_title">Multiple task apps installed. Choose one to use.</string>
     <string name="entries_count">Entries count</string>
     <string name="entries_count_title">Entries count</string>
     <string name="entries_count_message">Android entries: %d\nProcessed entries: %d\nDecSync entries: %s</string>
+    <string name="manage_decsync_data">Manage DecSync data</string>
     <string name="account_settings">Settings</string>
 
     <!-- Notifications -->
