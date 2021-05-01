@@ -451,7 +451,14 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 0)
                     return false
                 }
+                val adapter = address_books.adapter as CollectionAdapter
+                var defaultName = getString(R.string.account_collection_name_default)
+                for (i in 2 .. 100) {
+                    if (adapter.all { it.name != defaultName }) break
+                    defaultName = getString(R.string.account_collection_name_default_n, i)
+                }
                 val input = EditText(this)
+                input.setText(defaultName)
                 AlertDialog.Builder(this)
                         .setTitle(R.string.create_collection_title)
                         .setView(input)
@@ -473,7 +480,14 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 0)
                     return false
                 }
+                val adapter = calendars.adapter as CollectionAdapter
+                var defaultName = getString(R.string.account_collection_name_default)
+                for (i in 2 .. 100) {
+                    if (adapter.all { it.name != defaultName }) break
+                    defaultName = getString(R.string.account_collection_name_default_n, i)
+                }
                 val input = EditText(this)
+                input.setText(defaultName)
                 AlertDialog.Builder(this)
                         .setTitle(R.string.create_collection_title)
                         .setView(input)
@@ -504,7 +518,14 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
                     ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 0)
                     return false
                 }
+                val adapter = task_lists.adapter as CollectionAdapter
+                var defaultName = getString(R.string.account_collection_name_default)
+                for (i in 2 .. 100) {
+                    if (adapter.all { it.name != defaultName }) break
+                    defaultName = getString(R.string.account_collection_name_default_n, i)
+                }
                 val input = EditText(this)
+                input.setText(defaultName)
                 AlertDialog.Builder(this)
                         .setTitle(R.string.create_collection_title)
                         .setView(input)
@@ -907,6 +928,15 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
             return v
         }
+
+        fun any(predicate: (CollectionInfo) -> Boolean): Boolean {
+            for (i in 0 until count) {
+                if (predicate(getItem(i)!!)) return true
+            }
+            return false
+        }
+
+        fun all(predicate: (CollectionInfo) -> Boolean): Boolean = !any { !predicate(it) }
     }
 
     class CollectionUnknownAdapter(
