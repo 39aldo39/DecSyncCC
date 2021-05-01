@@ -23,16 +23,11 @@ import android.os.Build
 import android.os.Environment
 import android.preference.PreferenceManager
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.work.*
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import org.decsync.cc.calendars.CalendarsWorker
 import org.decsync.cc.contacts.ContactsWorker
 import org.decsync.cc.tasks.TasksWorker
 import org.decsync.library.*
 import java.io.File
-import java.util.*
-import java.util.concurrent.TimeUnit
 
 object PrefUtils {
     const val DECSYNC_USE_SAF = "decsync.use_saf"
@@ -98,8 +93,7 @@ object PrefUtils {
     fun getOwnAppId(context: Context): String {
         val settings = PreferenceManager.getDefaultSharedPreferences(context)
         return settings.getString(OWN_APP_ID, null) ?: run {
-            val id = Random().nextInt(100000)
-            getAppId("DecSyncCC", id).also { appId ->
+            generateAppId("DecSyncCC", true).also { appId ->
                 putOwnAppId(context, appId)
             }
         }
