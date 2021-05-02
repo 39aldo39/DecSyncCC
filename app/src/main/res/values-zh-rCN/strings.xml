@@ -31,7 +31,7 @@
     <string name="account_task_lists">任务列表</string>
     <string name="account_task_lists_unknown">任务列表 (未知)</string>
     <string name="account_synchronize_now">立即同步</string>
-	  <string name="account_show_deleted_collections">显示删除的集锦</string>
+    <string name="account_show_deleted_collections">显示删除的集锦</string>
     <string name="account_synchronizing_now">同步中</string>
     <string name="account_synchronize_this_collection">同步此集锦</string>
     <string name="account_refresh_address_book_list">刷新通讯簿列表</string>
@@ -42,7 +42,7 @@
     <string name="create_collection_title">新集锦的名称</string>
     <string name="rename_collection">重命名集锦</string>
     <string name="rename_collection_title">集锦的新名称</string>
-	  <string name="change_color_collection">更改颜色</string>
+    <string name="change_color_collection">更改颜色</string>
     <string name="delete_collection">删除集锦</string>
     <string name="delete_collection_title">你确定要删除集锦 \'%s\'吗？</string>
     <string name="restore_collection">恢复集锦</string>
@@ -53,9 +53,9 @@
     <string name="entries_count">条目数</string>
     <string name="entries_count_title">条目数</string>
     <string name="entries_count_message">安卓条目: %d\n已处理条目: %d\nDecSync 条目: %s</string>
-	  <string name="manage_decsync_data">管理 DecSync 数据</string>
+    <string name="manage_decsync_data">管理 DecSync 数据</string>
     <string name="account_settings">设置</string>
-	  <string name="account_collection_name_default">个人</string>
+    <string name="account_collection_name_default">个人</string>
     <string name="account_collection_name_default_n">个人 %d</string>
 
     <!-- Notifications -->
