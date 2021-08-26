@@ -62,12 +62,12 @@ class LocalContact: AndroidContact {
 
     fun writeUpdateAction(decsync: Decsync<Extra>) {
         val bookId = bookId // Populating the contact overwrites the bookId from the database
-        val contact = requireNotNull(contact)
+        val contact = getContact()
         val uid = uid ?: UUID.randomUUID().toString()
         contact.uid = uid
 
         val os = ByteArrayOutputStream()
-        contact.write(VCardVersion.V4_0, GroupMethod.CATEGORIES, os)
+        contact.writeVCard(VCardVersion.V4_0, os)
         val vcard = os.toString("UTF-8")
         decsync.setEntry(listOf("resources", uid), JsonNull, JsonPrimitive(vcard))
 
