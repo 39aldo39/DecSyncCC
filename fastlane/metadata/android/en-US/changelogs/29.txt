@@ -1,0 +1,3 @@
+- Add support for DecSync v2
+- Add DecSync data management
+- Add default collection name (#54)
