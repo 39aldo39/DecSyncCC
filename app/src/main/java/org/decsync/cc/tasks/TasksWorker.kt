@@ -91,14 +91,15 @@ class TasksWorker(context: Context, params: WorkerParameters) : CollectionWorker
         @ExperimentalStdlibApi
         fun enqueueAll(context: Context) {
             val authority = PrefUtils.getTasksAuthority(context) ?: return
+            val providerName = TaskProvider.ProviderName.fromAuthority(authority)
+            for (permission in providerName.permissions) {
+                if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
+                    return
+                }
+            }
+
             val provider = context.contentResolver.acquireContentProviderClient(authority) ?: return
             try {
-                val providerName = TaskProvider.ProviderName.fromAuthority(authority)
-                for (permission in providerName.permissions) {
-                    if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
-                        return
-                    }
-                }
                 val account = Account(PrefUtils.getTasksAccountName(context), context.getString(R.string.account_type_tasks))
                 val taskProvider = TaskProvider.fromProviderClient(context, providerName, provider)
                 val taskLists = AndroidTaskList.find(account, taskProvider, LocalTaskList.Factory, null, null)
