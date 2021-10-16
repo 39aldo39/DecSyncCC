@@ -1,0 +1,1 @@
+Fix potential bug when upgrading to DecSync v2
