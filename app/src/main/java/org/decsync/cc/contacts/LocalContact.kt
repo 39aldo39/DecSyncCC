@@ -67,7 +67,7 @@ class LocalContact: AndroidContact {
         contact.uid = uid
 
         val os = ByteArrayOutputStream()
-        contact.writeVCard(VCardVersion.V4_0, os)
+        contact.writeVCard(VCardVersion.V3_0, os) // Evolution does not support version 4.0 well (https://gitlab.gnome.org/GNOME/evolution-data-server/-/issues/8)
         val vcard = os.toString("UTF-8")
         decsync.setEntry(listOf("resources", uid), JsonNull, JsonPrimitive(vcard))
 
