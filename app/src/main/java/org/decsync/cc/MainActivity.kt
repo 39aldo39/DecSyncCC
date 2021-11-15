@@ -12,6 +12,7 @@ package org.decsync.cc
 import android.Manifest
 import android.accounts.Account
 import android.accounts.AccountManager
+import android.annotation.SuppressLint
 import android.annotation.TargetApi
 import android.content.*
 import android.content.pm.PackageManager
@@ -79,6 +80,7 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
     private var decsyncDir: NativeFile? = null
     private var error = false
 
+    @SuppressLint("BatteryLife")
     override fun onCreate(savedInstanceState: Bundle?) {
         PrefUtils.notifyTheme(this)
         super.onCreate(savedInstanceState)
@@ -132,18 +134,18 @@ class MainActivity: AppCompatActivity(), Toolbar.OnMenuItemClickListener, PopupM
 
         // Ask for exception to App Standby
         // TODO: also ask at intro
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && PrefUtils.getHintBatteryOptimizations(this)) {
+        if (Build.VERSION.SDK_INT >= 23 && PrefUtils.getHintBatteryOptimizations(this)) {
             val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
             if (!powerManager.isIgnoringBatteryOptimizations(BuildConfig.APPLICATION_ID)) {
                 AlertDialog.Builder(this)
                         .setTitle(R.string.startup_battery_optimization)
                         .setMessage(R.string.startup_battery_optimization_message)
-                        .setPositiveButton(R.string.startup_battery_optimization_disable) @TargetApi(Build.VERSION_CODES.M) { _, _ ->
+                        .setPositiveButton(R.string.startup_battery_optimization_disable) @TargetApi(23) { _, _ ->
                             val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + BuildConfig.APPLICATION_ID))
                             startActivity(intent)
                         }
                         .setNeutralButton(R.string.startup_not_now) { _, _ -> }
-                        .setNegativeButton(R.string.startup_dont_show_again) { _: DialogInterface, _: Int ->
+                        .setNegativeButton(R.string.startup_dont_show_again) { _, _ ->
                             PrefUtils.putHintBatteryOptimizations(this, false)
                         }
                         .show()
