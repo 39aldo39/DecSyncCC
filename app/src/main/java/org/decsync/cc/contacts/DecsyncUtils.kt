@@ -139,7 +139,7 @@ object ContactDecsyncUtils {
                 }
             }
             else -> {
-                val contacts = Contact.fromReader(StringReader(vcard), null)
+                val contacts = Contact.fromReader(StringReader(vcard), false, null)
                 if (contacts.isEmpty()) {
                     Log.w(TAG, "No contacts found in vCard $vcard")
                     return
