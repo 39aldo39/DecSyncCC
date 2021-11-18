@@ -101,9 +101,9 @@ abstract class CollectionWorker(val context: Context, params: WorkerParameters):
                         is TaskListInfo -> TasksWorker::class
                     }
                     // Set the repeatInterval slightly higher than the frequency of the SyncAdapter
-                    // (90 vs 60 minutes), so we reduce the chance of two syncs occurring very close
+                    // (20 vs 15 minutes), so we reduce the chance of two syncs occurring very close
                     // to each other.
-                    val workRequest = PeriodicWorkRequest.Builder(workerClass.java, 90, TimeUnit.MINUTES)
+                    val workRequest = PeriodicWorkRequest.Builder(workerClass.java, 20, TimeUnit.MINUTES)
                             .setInputData(inputData)
                             .build()
                     workManager.enqueueUniquePeriodicWork("${info.syncType}-${info.id}", ExistingPeriodicWorkPolicy.REPLACE, workRequest)

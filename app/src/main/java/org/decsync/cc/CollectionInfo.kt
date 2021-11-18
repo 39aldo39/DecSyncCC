@@ -83,7 +83,7 @@ class AddressBookInfo(id: String, name: String, deleted: Boolean) :
         bundle.putString("id", id)
         accountManager.addAccountExplicitly(account, null, bundle)
         ContentResolver.setSyncAutomatically(account, ContactsContract.AUTHORITY, true)
-        ContentResolver.addPeriodicSync(account, ContactsContract.AUTHORITY, Bundle(), 60 * 60)
+        ContentResolver.addPeriodicSync(account, ContactsContract.AUTHORITY, Bundle(), 60 * 15)
     }
 
     override fun remove(context: Context) {
@@ -150,7 +150,7 @@ class CalendarInfo(id: String, name: String, color: Int?, deleted: Boolean) :
         val success = AccountManager.get(context).addAccountExplicitly(account, null, null)
         if (success) {
             ContentResolver.setSyncAutomatically(account, CalendarContract.AUTHORITY, true)
-            ContentResolver.addPeriodicSync(account, CalendarContract.AUTHORITY, Bundle(), 60 * 60)
+            ContentResolver.addPeriodicSync(account, CalendarContract.AUTHORITY, Bundle(), 60 * 15)
         }
 
         val values = ContentValues()
@@ -231,7 +231,7 @@ class TaskListInfo(id: String, name: String, color: Int?, deleted: Boolean) :
             if (success) {
                 val authority = provider.name.authority
                 ContentResolver.setSyncAutomatically(account, authority, true)
-                ContentResolver.addPeriodicSync(account, authority, Bundle(), 60 * 60)
+                ContentResolver.addPeriodicSync(account, authority, Bundle(), 60 * 15)
             }
             LocalTaskList.create(account, provider, this)
         }

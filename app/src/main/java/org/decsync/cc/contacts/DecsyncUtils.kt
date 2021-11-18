@@ -83,7 +83,7 @@ object ContactDecsyncUtils {
                 accountManager.setUserData(newAccount, "id", extra.info.id) // Separate, since the account may exist
                 accountManager.setUserData(newAccount, KEY_NUM_PROCESSED_ENTRIES, null)
                 ContentResolver.setSyncAutomatically(newAccount, ContactsContract.AUTHORITY, true)
-                ContentResolver.addPeriodicSync(newAccount, ContactsContract.AUTHORITY, Bundle(), 60 * 60)
+                ContentResolver.addPeriodicSync(newAccount, ContactsContract.AUTHORITY, Bundle(), 60 * 15)
 
                 // Move the contacts to the new account
                 val values = ContentValues()
