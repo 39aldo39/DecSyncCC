@@ -70,6 +70,11 @@ object PrefUtils {
 
     fun getUseSaf(context: Context): Boolean {
         val settings = PreferenceManager.getDefaultSharedPreferences(context)
+        if (!settings.contains(DECSYNC_USE_SAF)) {
+            return (Build.VERSION.SDK_INT >= 29 && !Environment.isExternalStorageLegacy()).also { useSaf ->
+                putUseSaf(context, useSaf)
+            }
+        }
         return settings.getBoolean(DECSYNC_USE_SAF, false)
     }
 
