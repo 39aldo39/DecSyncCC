@@ -34,8 +34,8 @@
     <string name="nav_header_desc">Navigation header</string>
     <string name="nav_directories_title">DecSync directories</string>
     <string name="nav_directories_add">Add directory</string>
-    <string name="decsync_dir_show">Show directory</string>
-    <string name="decsync_dir_remove">Remove directory</string>
+    <string name="decsync_dir_show">Show DecSync directory</string>
+    <string name="decsync_dir_remove">Remove DecSync directory</string>
     <string name="rename_decsync_dir_title">Rename DecSync directory</string>
     <string name="decsync_dir_collections_enabled_message">There are still some collections enabled. Disable all collections before removing the DecSync directory.</string>
     <string name="remove_decsync_dir_title">Are you sure you want to remove the DecSync directory \'%s\'? No files will be deleted.</string>
@@ -94,9 +94,12 @@
 
     <!-- IntroActivity -->
     <string name="intro_welcome_title">Welcome to DecSync CC</string>
-    <string name="intro_welcome_desc">DecSync CC synchronizes contacts and calendars using DecSync</string>
+    <string name="intro_welcome_desc">DecSync CC synchronizes contacts, calendars and tasks using DecSync\n\nIt stores this data in a shared directory, using Syncthing, Google Drive, Dropbox or any other file synchronization service</string>
+    <string name="intro_syncthing_title">Syncthing</string>
+    <string name="intro_syncthing_desc">Syncthing synchronizes files directly between devices, without storing the data centrally or requiring a server\n\nDecSync CC works with any file synchronization service, but using Syncthing is recommended as your data stays on your devices</string>
+    <string name="intro_syncthing_button">Install Syncthing</string>
     <string name="intro_directory_title">DecSync Directory</string>
-    <string name="intro_directory_desc">The DecSync directory stores your contacts, calendars and tasks. To synchronize this data, synchronize this directory with other devices. This can be done without a server by using for example <a href="market://details?id=com.nutomic.syncthingandroid">Syncthing</a>, but any other method like Google Drive or Dropbox also works.</string>
+    <string name="intro_directory_desc">The DecSync directory contains your contacts, calendars and tasks. Select your synchronized directory from Syncthing, Google Drive, Dropbox or another service.</string>
     <string name="intro_directory_button">Choose directory</string>
     <string name="intro_directory_select">Please select a DecSync directory</string>
 

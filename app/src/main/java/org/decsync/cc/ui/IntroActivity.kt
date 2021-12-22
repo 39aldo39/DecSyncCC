@@ -20,6 +20,7 @@ import kotlinx.android.synthetic.main.activity_intro_directory.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.decsync.cc.*
+import org.decsync.cc.Utils.installApp
 import org.decsync.cc.model.DecsyncDirectory
 import org.decsync.library.DecsyncPrefUtils
 import org.decsync.library.checkDecsyncInfo
@@ -35,13 +36,14 @@ class IntroActivity : AppIntro2() {
         showStatusBar(true)
 
         addSlide(SlideIntroWelcome())
+        addSlide(SlideSyncthing())
         addSlide(SlideDirectory())
 
         if (PrefUtils.getUseSaf(this)) {
             // Reset stored DecSync dir by libdecsync
             DecsyncPrefUtils.removeDecsyncDir(this)
         } else {
-            askForPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 2, true)
+            askForPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 3, true)
         }
     }
 
@@ -78,6 +80,19 @@ class IntroActivity : AppIntro2() {
 class SlideIntroWelcome : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.activity_intro_welcome, container, false)
+    }
+}
+
+class SlideSyncthing : Fragment() {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        val view = inflater.inflate(R.layout.activity_intro_syncthing, container, false)
+
+        val installButton = view.findViewById<Button>(R.id.intro_syncthing_button)
+        installButton.setOnClickListener {
+            installApp(requireActivity(), "com.nutomic.syncthingandroid")
+        }
+
+        return view
     }
 }
 

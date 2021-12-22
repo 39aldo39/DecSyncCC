@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_intro_directory">
+    android:background="@color/bg_intro_syncthing">
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -14,43 +14,37 @@
         android:layout_marginHorizontal="@dimen/activity_horizontal_margin">
 
         <TextView
-            android:id="@+id/intro_directory_title"
+            android:id="@+id/intro_welcome_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="20dp"
             android:gravity="center"
-            android:text="@string/intro_directory_title"
+            android:text="@string/intro_syncthing_title"
             android:textColor="@android:color/white"
             android:textSize="@dimen/intro_title"
             android:textStyle="bold"/>
 
         <ImageView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:src="@drawable/folder"
-            tools:ignore="ContentDescription" />
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:layout_margin="20dp"
+            app:srcCompat="@drawable/ic_syncthing" />
 
         <Button
-            android:id="@+id/intro_directory_button"
+            android:id="@+id/intro_syncthing_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="5dp"
-            android:layout_gravity="center_horizontal"
-            android:text="@string/intro_directory_button"
-            android:textSize="12sp"
-            android:textAllCaps="false" />
+            android:text="@string/intro_syncthing_button" />
 
         <TextView
-            android:id="@+id/intro_directory_desc"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:layout_marginBottom="64dp"
             android:gravity="center"
-            android:text="@string/intro_directory_desc"
+            android:text="@string/intro_syncthing_desc"
             android:textColor="@android:color/white"
-            android:textSize="@dimen/intro_desc"
-            android:textColorLink="@color/link_intro_directory" />
+            android:textSize="@dimen/intro_desc" />
 
     </LinearLayout>
 

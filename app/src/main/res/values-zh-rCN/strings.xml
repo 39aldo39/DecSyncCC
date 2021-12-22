@@ -65,14 +65,6 @@
     <string name="notification_saf_update_title">新的安卓版本</string>
     <string name="notification_saf_update_message">需重新选择 DecSync 目录</string>
 
-    <!-- IntroActivity -->
-    <string name="intro_welcome_title">欢迎来到 DecSync CC</string>
-    <string name="intro_welcome_desc">DecSync CC 用 DecSync 同步日历和联系人</string>
-    <string name="intro_directory_title">DecSync 目录</string>
-    <string name="intro_directory_desc">要启动同步，你只需同步 DecSync 目录</string>
-    <string name="intro_directory_button">选择目录</string>
-    <string name="intro_directory_select">请选择一个 DecSync 目录</string>
-
     <!-- Startup dialogs -->
     <string name="startup_battery_optimization">定期同步</string>
     <string name="startup_battery_optimization_message">您的设备会限制 DecSync CC 同步。要强制定期的 DecSync CC 同步间隔请关闭 \"电池 优化\"。</string>
