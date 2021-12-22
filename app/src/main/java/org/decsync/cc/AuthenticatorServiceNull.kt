@@ -40,3 +40,7 @@ abstract class AuthenticatorServiceNull : Service() {
         override fun hasFeatures(response: AccountAuthenticatorResponse, account: Account, strings: Array<String>): Bundle? = null
     }
 }
+
+class AuthenticatorServiceContacts : AuthenticatorServiceNull()
+class AuthenticatorServiceCalendars : AuthenticatorServiceNull()
+class AuthenticatorServiceTasks : AuthenticatorServiceNull()

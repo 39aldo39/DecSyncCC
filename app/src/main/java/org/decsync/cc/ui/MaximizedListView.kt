@@ -6,7 +6,7 @@
  * http://www.gnu.org/licenses/gpl.html
  */
 
-package org.decsync.cc
+package org.decsync.cc.ui
 
 import android.content.Context
 import android.util.AttributeSet

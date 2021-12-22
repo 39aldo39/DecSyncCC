@@ -20,7 +20,7 @@ class LocalTaskList private constructor(
 
     val oldColor: Int?
     get() {
-        provider.client.query(taskListSyncUri(), arrayOf(COLUMN_OLD_COLOR),
+        provider.client.query(taskListSyncUri(), arrayOf(TasksUtils.COLUMN_OLD_COLOR),
                 null, null, null)?.use { cursor ->
             if (cursor.moveToNext())
                 return cursor.getInt(0)
@@ -30,7 +30,7 @@ class LocalTaskList private constructor(
 
     var numProcessedEntries: Int
     get() {
-        provider.client.query(taskListSyncUri(), arrayOf(COLUMN_NUM_PROCESSED_ENTRIES),
+        provider.client.query(taskListSyncUri(), arrayOf(TasksUtils.COLUMN_NUM_PROCESSED_ENTRIES),
                 null, null, null)?.use { cursor ->
             if (cursor.moveToNext())
                 return cursor.getInt(0)
@@ -39,7 +39,7 @@ class LocalTaskList private constructor(
     }
     set(value) {
         val values = ContentValues()
-        values.put(COLUMN_NUM_PROCESSED_ENTRIES, value)
+        values.put(TasksUtils.COLUMN_NUM_PROCESSED_ENTRIES, value)
         provider.client.update(taskListSyncUri(), values, null, null)
     }
 
@@ -50,7 +50,7 @@ class LocalTaskList private constructor(
             values.put(TaskLists._SYNC_ID, info.id)
             values.put(TaskLists.LIST_NAME, info.name)
             values.put(TaskLists.LIST_COLOR, color)
-            values.put(COLUMN_OLD_COLOR, color)
+            values.put(TasksUtils.COLUMN_OLD_COLOR, color)
             values.put(TaskLists.SYNC_ENABLED, 1)
             values.put(TaskLists.VISIBLE, 1)
             return create(account, provider, values)

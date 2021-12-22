@@ -12,26 +12,34 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.decsync.cc.calendars.CalendarsWorker
 import org.decsync.cc.contacts.ContactsWorker
+import org.decsync.cc.model.DecsyncDirectory
 import org.decsync.cc.tasks.TasksWorker
+import org.decsync.cc.ui.MainActivity
+import org.decsync.library.NativeFile
 import java.lang.Exception
 import java.util.concurrent.TimeUnit
 
+private const val TAG = "CollectionWorker"
+
+@ExperimentalStdlibApi
 abstract class CollectionWorker(val context: Context, params: WorkerParameters): CoroutineWorker(context, params) {
 
     abstract val notificationTitleResId: Int
-    abstract fun getCollectionInfo(id: String, name: String): CollectionInfo
-    abstract fun sync(info: CollectionInfo, provider: ContentProviderClient): Boolean
+    abstract fun getCollectionInfo(decsyncDir: DecsyncDirectory, id: String, name: String): CollectionInfo
+    abstract suspend fun sync(info: CollectionInfo, provider: ContentProviderClient, nativeFile: NativeFile): Boolean
 
-    @ExperimentalStdlibApi
     override suspend fun doWork(): Result {
+        val dirName = inputData.getString(KEY_DIR_NAME) ?: return Result.failure()
         val id = inputData.getString(KEY_ID) ?: return Result.failure()
         val name = inputData.getString(KEY_NAME) ?: return Result.failure()
 
-        val info = getCollectionInfo(id, name)
+        val decsyncDir = App.db.decsyncDirectoryDao().findByName(dirName) ?: return Result.failure()
+        val info = getCollectionInfo(decsyncDir, id, name)
         Log.d(TAG, "Sync collection ${info.syncType}-${info.id}")
 
         val provider = info.getProviderClient(context) ?: return Result.failure()
         try {
+            val nativeFile = decsyncDir.getNativeFile(context)
             val isInitSync = PrefUtils.getIsInitSync(context, info)
             if (isInitSync) {
                 val notification = initSyncNotificationBuilder(context).apply {
@@ -40,8 +48,7 @@ abstract class CollectionWorker(val context: Context, params: WorkerParameters):
                 }.build()
                 setForeground(ForegroundInfo(info.notificationId, notification))
 
-                val decsyncDir = PrefUtils.getNativeFile(context) ?: return Result.failure()
-                val decsync = getDecsync(info, context, decsyncDir)
+                val decsync = getDecsync(info, context, nativeFile)
                 val extra = Extra(info, context, provider)
                 setNumProcessedEntries(extra, 0)
                 decsync.initStoredEntries()
@@ -50,7 +57,7 @@ abstract class CollectionWorker(val context: Context, params: WorkerParameters):
                 return Result.success()
             } else {
                 return try {
-                    val success = sync(info, provider)
+                    val success = sync(info, provider, nativeFile)
                     if (success) Result.success() else Result.failure()
                 } catch (e: Exception) {
                     Log.e(TAG, "", e)
@@ -82,19 +89,20 @@ abstract class CollectionWorker(val context: Context, params: WorkerParameters):
     }
 
     companion object {
+        const val KEY_DIR_NAME = "KEY_DIR_NAME"
         const val KEY_ID = "KEY_ID"
         const val KEY_NAME = "KEY_NAME"
 
-        @ExperimentalStdlibApi
         fun enqueue(context: Context, info: CollectionInfo) {
             val workManager = WorkManager.getInstance(context)
             GlobalScope.launch {
                 val workInfos = workManager.getWorkInfosForUniqueWork("${info.syncType}-${info.id}").await()
                 if (workInfos.all { it.state != WorkInfo.State.RUNNING }) {
                     val inputData = Data.Builder()
-                            .putString(KEY_ID, info.id)
-                            .putString(KEY_NAME, info.name)
-                            .build()
+                        .putString(KEY_DIR_NAME, info.decsyncDir.name)
+                        .putString(KEY_ID, info.id)
+                        .putString(KEY_NAME, info.name)
+                        .build()
                     val workerClass = when (info) {
                         is AddressBookInfo -> ContactsWorker::class
                         is CalendarInfo -> CalendarsWorker::class

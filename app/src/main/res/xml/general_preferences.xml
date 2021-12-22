@@ -14,28 +14,9 @@
     <PreferenceCategory
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:title="@string/settings_category_decsync">
-
-        <Preference
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:key="libdecsync.directory"
-            android:title="@string/settings_decsync_directory"/>
-
-        <Preference
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:key="decsync.directory"
-            android:title="@string/settings_decsync_file"/>
-
-    </PreferenceCategory>
-
-    <PreferenceCategory
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
         android:title="@string/settings_category_tasks">
 
-        <org.decsync.cc.ConditionalListPreference
+        <org.decsync.cc.ui.ConditionalListPreference
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:key="tasks_authority"

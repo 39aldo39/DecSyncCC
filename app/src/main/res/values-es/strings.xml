@@ -47,9 +47,6 @@
     <string name="intro_directory_desc">Para iniciar la sincronización, lo único que ncesita hacer es vincular la carpeta DecSync</string>
     <string name="intro_directory_button">Seleccione la carpeta</string>
     <string name="intro_directory_select">Por favor, seleccione select a DecSync directory</string>
-
-    <!-- SafUpdateActivity -->
-    <string name="saf_update_desc">Debido a una actualización de Android, necesita reseleccionar la carpeta DecSync</string>
   
     <!-- Startup dialogs -->
     <string name="startup_battery_optimization">Sincronización programada</string>

@@ -24,7 +24,10 @@ import android.app.Service
 import android.content.*
 import android.os.Bundle
 import android.os.IBinder
+import kotlinx.coroutines.runBlocking
 import org.decsync.cc.AddressBookInfo
+import org.decsync.cc.App
+import org.decsync.cc.CollectionInfo
 import org.decsync.cc.CollectionWorker
 
 class ContactsService : Service() {
@@ -47,9 +50,17 @@ class ContactsService : Service() {
                                    syncResult: SyncResult) {
             // Only queue as the SyncAdapter is canceled when it doesn't use the internet in the first minute
             // Mainly used to get notified about changes in the data
-            val id = AccountManager.get(context).getUserData(account, "id")
-            val info = AddressBookInfo(id, account.name, false)
-            CollectionWorker.enqueue(context, info)
+            runBlocking {
+                val accountManager = AccountManager.get(context)
+                val dirId = accountManager.getUserData(account, AddressBookInfo.KEY_DECSYNC_DIR_ID).toLong()
+                val decsyncDir = App.db.decsyncDirectoryDao().find(dirId)
+                if (decsyncDir != null) {
+                    val id = accountManager.getUserData(account, AddressBookInfo.KEY_COLLECTION_ID)
+                    val name = accountManager.getUserData(account, AddressBookInfo.KEY_NAME)
+                    val info = AddressBookInfo(decsyncDir, id, name, false)
+                    CollectionWorker.enqueue(context, info)
+                }
+            }
         }
     }
 }

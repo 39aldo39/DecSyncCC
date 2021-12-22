@@ -19,7 +19,6 @@
 package org.decsync.cc.calendars
 
 import android.Manifest
-import android.accounts.Account
 import android.content.*
 import android.content.pm.PackageManager
 import android.os.Build
@@ -32,18 +31,19 @@ import at.bitfire.ical4android.AndroidCalendar
 import kotlinx.serialization.json.JsonPrimitive
 import org.decsync.cc.*
 import org.decsync.cc.R
-import org.decsync.cc.calendars.CalendarDecsyncUtils.CalendarFactory
 import org.decsync.cc.contacts.syncAdapterUri
+import org.decsync.cc.model.DecsyncDirectory
+import org.decsync.library.NativeFile
 
+@ExperimentalStdlibApi
 class CalendarsWorker(context: Context, params: WorkerParameters) : CollectionWorker(context, params) {
     override val notificationTitleResId = R.string.notification_adding_events
 
-    override fun getCollectionInfo(id: String, name: String): CollectionInfo {
-        return CalendarInfo(id, name, null, false)
+    override fun getCollectionInfo(decsyncDir: DecsyncDirectory, id: String, name: String): CollectionInfo {
+        return CalendarInfo(decsyncDir, id, name, null, false)
     }
 
-    @ExperimentalStdlibApi
-    override fun sync(info: CollectionInfo, provider: ContentProviderClient): Boolean {
+    override suspend fun sync(info: CollectionInfo, provider: ContentProviderClient, nativeFile: NativeFile): Boolean {
         if (!PrefUtils.getUseSaf(context) &&
                 ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             return false
@@ -62,26 +62,24 @@ class CalendarsWorker(context: Context, params: WorkerParameters) : CollectionWo
         val account = info.getAccount(context)
         AndroidCalendar.insertColors(provider, account)
 
-        val decsyncDir = PrefUtils.getNativeFile(context)
-                ?: throw Exception(context.getString(R.string.settings_decsync_dir_not_configured))
         provider.query(syncAdapterUri(account, Calendars.CONTENT_URI),
-                arrayOf(Calendars._ID, Calendars.CALENDAR_COLOR, COLUMN_OLD_COLOR),
+                arrayOf(Calendars._ID, Calendars.CALENDAR_COLOR, CalendarsUtils.COLUMN_OLD_COLOR),
                 "${Calendars.NAME}=?", arrayOf(info.id), null)!!.use { calCursor ->
             if (calCursor.moveToFirst()) {
                 val calendarId = calCursor.getLong(0)
                 val color = calCursor.getInt(1)
                 val oldColor = calCursor.getInt(2)
 
-                val calendar = AndroidCalendar.findByID(account, provider, CalendarFactory, calendarId)
+                val calendar = AndroidCalendar.findByID(account, provider, CalendarsUtils.CalendarFactory, calendarId)
                 val extra = Extra(info, context, provider)
-                val decsync = getDecsync(info, context, decsyncDir)
+                val decsync = getDecsync(info, context, nativeFile)
 
                 // Detect changed color
                 if (color != oldColor) {
                     decsync.setEntry(listOf("info"), JsonPrimitive("color"), JsonPrimitive(Utils.colorToString(color)))
 
                     val values = ContentValues()
-                    values.put(COLUMN_OLD_COLOR, color)
+                    values.put(CalendarsUtils.COLUMN_OLD_COLOR, color)
                     provider.update(syncAdapterUri(account, Calendars.CONTENT_URI),
                             values, "${Calendars._ID}=?", arrayOf(calendarId.toString()))
                 }
@@ -127,23 +125,29 @@ class CalendarsWorker(context: Context, params: WorkerParameters) : CollectionWo
     }
 
     companion object {
-        @ExperimentalStdlibApi
-        fun enqueueAll(context: Context) {
+        suspend fun enqueueAll(context: Context) {
+            val decsyncDirs = App.db.decsyncDirectoryDao().all()
+            for (decsyncDir in decsyncDirs) {
+                enqueueDir(context, decsyncDir)
+            }
+        }
+
+        fun enqueueDir(context: Context, decsyncDir: DecsyncDirectory) {
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+                ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
                 return
             }
 
-            val account = Account(PrefUtils.getCalendarAccountName(context), context.getString(R.string.account_type_calendars))
             val provider = context.contentResolver.acquireContentProviderClient(CalendarContract.AUTHORITY) ?: return
             try {
+                val account = decsyncDir.getCalendarAccount(context)
                 provider.query(syncAdapterUri(account, Calendars.CONTENT_URI),
-                        arrayOf(Calendars.NAME, Calendars.CALENDAR_DISPLAY_NAME),
-                        null, null, null)!!.use { calCursor ->
+                    arrayOf(Calendars.NAME, Calendars.CALENDAR_DISPLAY_NAME),
+                    null, null, null)!!.use { calCursor ->
                     while (calCursor.moveToNext()) {
                         val id = calCursor.getString(0)
                         val name = calCursor.getString(1)
-                        val info = CalendarInfo(id, name, null, false)
+                        val info = CalendarInfo(decsyncDir, id, name, null, false)
                         enqueue(context, info)
                     }
                 }

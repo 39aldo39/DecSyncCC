@@ -6,7 +6,7 @@
 
     <fragment
         android:id="@+id/entry_fragment"
-        class="org.decsync.cc.GeneralPrefsActivity$GeneralPrefsFragment"
+        class="org.decsync.cc.ui.GeneralPrefsActivity$GeneralPrefsFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 

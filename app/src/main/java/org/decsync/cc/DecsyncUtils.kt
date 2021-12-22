@@ -23,16 +23,17 @@ import android.content.ContentProviderClient
 import android.content.ContentValues
 import android.content.Context
 import android.provider.CalendarContract
-import org.decsync.cc.calendars.COLUMN_NUM_PROCESSED_ENTRIES
-import org.decsync.cc.calendars.CalendarDecsyncUtils
-import org.decsync.cc.contacts.ContactDecsyncUtils
-import org.decsync.cc.contacts.KEY_NUM_PROCESSED_ENTRIES
+import org.decsync.cc.calendars.CalendarsListeners
+import org.decsync.cc.calendars.CalendarsUtils
+import org.decsync.cc.contacts.ContactsListeners
 import org.decsync.cc.contacts.syncAdapterUri
-import org.decsync.cc.tasks.TasksDecsyncUtils
+import org.decsync.cc.tasks.TasksListeners
 import org.decsync.library.*
 
+const val KEY_NUM_PROCESSED_ENTRIES = "num-processed-entries"
+
 @ExperimentalStdlibApi
-class Extra(
+data class Extra(
         val info: CollectionInfo,
         val context: Context,
         val provider: ContentProviderClient
@@ -43,15 +44,15 @@ fun getDecsync(info: CollectionInfo, context: Context, decsyncDir: NativeFile): 
     val ownAppId = PrefUtils.getOwnAppId(context)
     val decsync = Decsync<Extra>(decsyncDir, info.syncType, info.id, ownAppId)
     val infoListener = when (info) {
-        is AddressBookInfo -> ContactDecsyncUtils::infoListener
-        is CalendarInfo -> CalendarDecsyncUtils::infoListener
-        is TaskListInfo -> TasksDecsyncUtils::infoListener
+        is AddressBookInfo -> ContactsListeners::infoListener
+        is CalendarInfo -> CalendarsListeners::infoListener
+        is TaskListInfo -> TasksListeners::infoListener
     }
     decsync.addListener(listOf("info"), infoListener)
     val resourcesListener = when (info) {
-        is AddressBookInfo -> ContactDecsyncUtils::resourcesListener
-        is CalendarInfo -> CalendarDecsyncUtils::resourcesListener
-        is TaskListInfo -> TasksDecsyncUtils::resourcesListener
+        is AddressBookInfo -> ContactsListeners::resourcesListener
+        is CalendarInfo -> CalendarsListeners::resourcesListener
+        is TaskListInfo -> TasksListeners::resourcesListener
     }
     decsync.addListener(listOf("resources"), resourcesListener)
     return decsync
@@ -79,12 +80,12 @@ private fun addToNumProcessedEntriesContacts(extra: Extra, add: Int) {
 private fun addToNumProcessedEntriesCalendar(extra: Extra, add: Int) {
     val account = extra.info.getAccount(extra.context)
     val count = extra.provider.query(syncAdapterUri(account, CalendarContract.Calendars.CONTENT_URI),
-            arrayOf(COLUMN_NUM_PROCESSED_ENTRIES), "${CalendarContract.Calendars.NAME}=?",
+            arrayOf(CalendarsUtils.COLUMN_NUM_PROCESSED_ENTRIES), "${CalendarContract.Calendars.NAME}=?",
             arrayOf(extra.info.id), null)!!.use { cursor ->
         if (cursor.moveToFirst() && !cursor.isNull(0)) cursor.getInt(0) else null
     } ?: return
     val values = ContentValues()
-    values.put(COLUMN_NUM_PROCESSED_ENTRIES, count + add)
+    values.put(CalendarsUtils.COLUMN_NUM_PROCESSED_ENTRIES, count + add)
     extra.provider.update(syncAdapterUri(account, CalendarContract.Calendars.CONTENT_URI),
             values, "${CalendarContract.Calendars.NAME}=?", arrayOf(extra.info.id))
 }
@@ -117,7 +118,7 @@ private fun setNumProcessedEntriesContacts(extra: Extra, count: Int) {
 private fun setNumProcessedEntriesCalendar(extra: Extra, count: Int) {
     val account = extra.info.getAccount(extra.context)
     val values = ContentValues()
-    values.put(COLUMN_NUM_PROCESSED_ENTRIES, count)
+    values.put(CalendarsUtils.COLUMN_NUM_PROCESSED_ENTRIES, count)
     extra.provider.update(syncAdapterUri(account, CalendarContract.Calendars.CONTENT_URI),
             values, "${CalendarContract.Calendars.NAME}=?", arrayOf(extra.info.id))
 }

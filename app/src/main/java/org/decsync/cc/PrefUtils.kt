@@ -25,6 +25,7 @@ import android.preference.PreferenceManager
 import androidx.appcompat.app.AppCompatDelegate
 import org.decsync.cc.calendars.CalendarsWorker
 import org.decsync.cc.contacts.ContactsWorker
+import org.decsync.cc.model.DecsyncDirectory
 import org.decsync.cc.tasks.TasksWorker
 import org.decsync.library.*
 import java.io.File
@@ -43,8 +44,9 @@ object PrefUtils {
     const val TASKS_AUTHORITY = "tasks_authority"
     const val IS_INIT_SYNC = "is_init_sync"
     const val SHOW_DELETED_COLLECTIONS = "show_deleted_collections"
+    const val SELECTED_DIR = "selected_dir"
 
-    val currentAppVersion = 4
+    val currentAppVersion = 5
     val defaultDecsyncDir = "${Environment.getExternalStorageDirectory()}/DecSync"
 
     fun getAppVersion(context: Context): Int {
@@ -56,16 +58,6 @@ object PrefUtils {
         val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
         editor.putInt(APP_VERSION, value)
         editor.apply()
-    }
-
-    @ExperimentalStdlibApi
-    fun getNativeFile(context: Context): NativeFile? {
-        return if (getUseSaf(context)) {
-            val decsyncDir = DecsyncPrefUtils.getDecsyncDir(context) ?: return null
-            nativeFileFromDirUri(context, decsyncDir)
-        } else {
-            nativeFileFromFile(getDecsyncFile(context))
-        }
     }
 
     fun getUseSaf(context: Context): Boolean {
@@ -173,34 +165,32 @@ object PrefUtils {
         editor.apply()
     }
 
-    fun getCalendarAccountName(context: Context): String {
+    private fun getCalendarAccountName(context: Context): String {
         val settings = PreferenceManager.getDefaultSharedPreferences(context)
         return settings.getString(CALENDAR_ACCOUNT_NAME, null) ?: run {
             context.getString(R.string.account_name_calendars).also { name ->
-                putCalendarAccountName(context, name)
+                val editor = settings.edit()
+                editor.putString(CALENDAR_ACCOUNT_NAME, name)
+                editor.apply()
             }
         }
     }
 
-    fun putCalendarAccountName(context: Context, value: String) {
+    private fun putCalendarAccountName(context: Context, value: String) {
         val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
         editor.putString(CALENDAR_ACCOUNT_NAME, value)
         editor.apply()
     }
 
-    fun getTasksAccountName(context: Context): String {
+    private fun getTasksAccountName(context: Context): String {
         val settings = PreferenceManager.getDefaultSharedPreferences(context)
         return settings.getString(TASKS_ACCOUNT_NAME, null) ?: run {
             context.getString(R.string.account_name_tasks).also { name ->
-                putTasksAccountName(context, name)
+                val editor = settings.edit()
+                editor.putString(TASKS_ACCOUNT_NAME, name)
+                editor.apply()
             }
         }
-    }
-
-    fun putTasksAccountName(context: Context, value: String) {
-        val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
-        editor.putString(TASKS_ACCOUNT_NAME, value)
-        editor.apply()
     }
 
     fun getTasksAuthority(context: Context): String? {
@@ -215,8 +205,19 @@ object PrefUtils {
         editor.apply()
     }
 
+    fun getSelectedDir(context: Context): Long {
+        val settings = PreferenceManager.getDefaultSharedPreferences(context)
+        return settings.getLong(SELECTED_DIR, -1)
+    }
+
+    fun putSelectedDir(context: Context, value: Long) {
+        val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
+        editor.putLong(SELECTED_DIR, value)
+        editor.apply()
+    }
+
     @ExperimentalStdlibApi
-    fun checkAppUpgrade(context: Context) {
+    suspend fun checkAppUpgrade(context: Context) {
         val appVersion = getAppVersion(context)
         if (appVersion != currentAppVersion) {
             if (appVersion > 0) {
@@ -231,6 +232,27 @@ object PrefUtils {
                     ContactsWorker.enqueueAll(context)
                     CalendarsWorker.enqueueAll(context)
                     TasksWorker.enqueueAll(context)
+                }
+                if (appVersion < 5) {
+                    val directory = if (getUseSaf(context)) {
+                        DecsyncPrefUtils.getDecsyncDir(context)?.toString()
+                    } else {
+                        getDecsyncFile(context).path
+                    }
+                    if (directory != null) {
+                        val dirName = context.getString(R.string.decsync_dir_name_default)
+                        val calendarAccountName = getCalendarAccountName(context)
+                        val taskListAccountName = getTasksAccountName(context)
+                        val decsyncDir = DecsyncDirectory(
+                            directory = directory,
+                            name = dirName,
+                            contactsFormatAccountName = "%s",
+                            calendarAccountName = calendarAccountName,
+                            taskListAccountName = taskListAccountName
+                        )
+                        val dirId = App.db.decsyncDirectoryDao().insert(decsyncDir)
+                        putSelectedDir(context, dirId)
+                    }
                 }
             }
             putAppVersion(context, currentAppVersion)

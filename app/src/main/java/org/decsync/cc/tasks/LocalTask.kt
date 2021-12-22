@@ -17,7 +17,7 @@ class LocalTask: AndroidTask {
 
     var isNewTask: Boolean
         get() {
-            taskList.provider.client.query(taskSyncURI(), arrayOf(COLUMN_IS_NEW_TASK),
+            taskList.provider.client.query(taskSyncURI(), arrayOf(TasksUtils.COLUMN_IS_NEW_TASK),
                     null, null, null)?.use { cursor ->
                 if (cursor.moveToNext())
                     return cursor.isNull(0)
@@ -27,9 +27,9 @@ class LocalTask: AndroidTask {
         set(value) {
             val values = ContentValues()
             if (value) {
-                values.put(COLUMN_IS_NEW_TASK, 1)
+                values.put(TasksUtils.COLUMN_IS_NEW_TASK, 1)
             } else {
-                values.putNull(COLUMN_IS_NEW_TASK)
+                values.putNull(TasksUtils.COLUMN_IS_NEW_TASK)
             }
             taskList.provider.client.update(taskSyncURI(), values, null, null)
         }
@@ -66,7 +66,7 @@ class LocalTask: AndroidTask {
         super.buildTask(builder, update)
         val task = requireNotNull(task)
 
-        builder .withValue(COLUMN_IS_NEW_TASK, 1)
+        builder .withValue(TasksUtils.COLUMN_IS_NEW_TASK, 1)
                 .withValue(TaskContract.Tasks._SYNC_ID, task.uid)
     }
 

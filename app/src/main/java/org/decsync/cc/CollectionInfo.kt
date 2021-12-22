@@ -34,18 +34,21 @@ import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
 import at.bitfire.ical4android.AndroidCalendar
 import at.bitfire.ical4android.TaskProvider
-import org.decsync.cc.calendars.CalendarDecsyncUtils
+import org.decsync.cc.calendars.CalendarsUtils
 import org.decsync.cc.contacts.syncAdapterUri
+import org.decsync.cc.model.DecsyncDirectory
 import org.decsync.cc.tasks.LocalTaskList
 
+// TODO: store collection info in database for faster loading
 sealed class CollectionInfo (
-        val syncType: String,
-        val id: String,
-        val name: String,
-        val color: Int?,
-        val deleted: Boolean
+    val decsyncDir: DecsyncDirectory,
+    val syncType: String,
+    val id: String,
+    val name: String,
+    val color: Int?,
+    val deleted: Boolean
 ) {
-    val notificationId = 31 * id.hashCode() + syncType.hashCode()
+    val notificationId = 31 * 31 * decsyncDir.id.hashCode() + 31 * id.hashCode() + syncType.hashCode()
 
     abstract fun getAccount(context: Context): Account
     abstract fun getProviderClient(context: Context): ContentProviderClient?
@@ -55,12 +58,10 @@ sealed class CollectionInfo (
     abstract fun getPermissions(context: Context): List<String>
 }
 
-class AddressBookInfo(id: String, name: String, deleted: Boolean) :
-        CollectionInfo("contacts", id, name, null, deleted) {
+class AddressBookInfo(decsyncDir: DecsyncDirectory, id: String, name: String, deleted: Boolean) :
+        CollectionInfo(decsyncDir, "contacts", id, name, null, deleted) {
     override fun getAccount(context: Context): Account {
-        val accountName = name
-        val accountType = context.getString(R.string.account_type_contacts)
-        return Account(accountName, accountType)
+        return decsyncDir.getContactsAccount(context, name)
     }
 
     override fun getProviderClient(context: Context): ContentProviderClient? {
@@ -80,7 +81,9 @@ class AddressBookInfo(id: String, name: String, deleted: Boolean) :
         val accountManager = AccountManager.get(context)
         val account = getAccount(context)
         val bundle = Bundle()
-        bundle.putString("id", id)
+        bundle.putString(KEY_DECSYNC_DIR_ID, decsyncDir.id.toString())
+        bundle.putString(KEY_COLLECTION_ID, id)
+        bundle.putString(KEY_NAME, name)
         accountManager.addAccountExplicitly(account, null, bundle)
         ContentResolver.setSyncAutomatically(account, ContactsContract.AUTHORITY, true)
         ContentResolver.addPeriodicSync(account, ContactsContract.AUTHORITY, Bundle(), 60 * 15)
@@ -102,14 +105,19 @@ class AddressBookInfo(id: String, name: String, deleted: Boolean) :
                 Manifest.permission.WRITE_CONTACTS
         )
     }
+
+    companion object {
+        const val KEY_DECSYNC_DIR_ID = "decsync_dir_id"
+        const val KEY_COLLECTION_ID = "id"
+        const val KEY_NAME = "name"
+    }
 }
 
-class CalendarInfo(id: String, name: String, color: Int?, deleted: Boolean) :
-        CollectionInfo("calendars", id, name, color, deleted) {
+@ExperimentalStdlibApi
+class CalendarInfo(decsyncDir: DecsyncDirectory, id: String, name: String, color: Int?, deleted: Boolean) :
+        CollectionInfo(decsyncDir, "calendars", id, name, color, deleted) {
     override fun getAccount(context: Context): Account {
-        val accountName = PrefUtils.getCalendarAccountName(context)
-        val accountType = context.getString(R.string.account_type_calendars)
-        return Account(accountName, accountType)
+        return decsyncDir.getCalendarAccount(context)
     }
 
     override fun getProviderClient(context: Context): ContentProviderClient? {
@@ -144,7 +152,6 @@ class CalendarInfo(id: String, name: String, color: Int?, deleted: Boolean) :
         return result
     }
 
-    @ExperimentalStdlibApi
     override fun create(context: Context) {
         val account = getAccount(context)
         val success = AccountManager.get(context).addAccountExplicitly(account, null, null)
@@ -163,7 +170,7 @@ class CalendarInfo(id: String, name: String, color: Int?, deleted: Boolean) :
         values.put(Calendars.NAME, id)
         values.put(Calendars.CALENDAR_DISPLAY_NAME, name)
         if (color != null) {
-            CalendarDecsyncUtils.addColor(values, color)
+            CalendarsUtils.addColor(values, color)
         }
         getProviderClient(context)?.let { provider ->
             try {
@@ -204,12 +211,10 @@ class CalendarInfo(id: String, name: String, color: Int?, deleted: Boolean) :
 }
 
 @ExperimentalStdlibApi
-class TaskListInfo(id: String, name: String, color: Int?, deleted: Boolean) :
-        CollectionInfo("tasks", id, name, color, deleted) {
+class TaskListInfo(decsyncDir: DecsyncDirectory, id: String, name: String, color: Int?, deleted: Boolean) :
+        CollectionInfo(decsyncDir, "tasks", id, name, color, deleted) {
     override fun getAccount(context: Context): Account {
-        val accountName = PrefUtils.getTasksAccountName(context)
-        val accountType = context.getString(R.string.account_type_tasks)
-        return Account(accountName, accountType)
+        return decsyncDir.getTaskListAccount(context)
     }
 
     override fun getProviderClient(context: Context): ContentProviderClient? {

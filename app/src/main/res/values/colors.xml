@@ -4,7 +4,13 @@
     <color name="primaryDarkColor">#0277BD</color>
     <color name="secondaryColor">#E040FB</color>
 
+    <color name="nav_bar_color">#82B1FF</color>
+
     <color name="bg_intro_welcome">#3F51B5</color>
     <color name="bg_intro_directory">#009688</color>
     <color name="img_intro_directory">#404040</color>
+    <color name="link_intro_directory">#3F51B5</color>
+    <color name="bg_add_directory">#2F51B5</color>
+    <color name="bg_saf_update_welcome">#F44336</color>
+    <color name="bg_saf_update_directory">#F9A825</color>
 </resources>

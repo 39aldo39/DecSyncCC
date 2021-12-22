@@ -18,13 +18,9 @@
 
 package org.decsync.cc.contacts
 
-import android.accounts.Account
 import android.accounts.AccountManager
-import android.content.ContentResolver
 import android.content.ContentValues
 import android.os.Build
-import android.os.Bundle
-import android.provider.ContactsContract
 import android.provider.ContactsContract.RawContacts
 import android.util.Log
 import at.bitfire.vcard4android.*
@@ -33,11 +29,10 @@ import org.decsync.cc.*
 import org.decsync.library.Decsync
 import java.io.StringReader
 
-const val TAG = "DecSync Contacts"
-const val KEY_NUM_PROCESSED_ENTRIES = "num-processed-entries"
+private const val TAG = "DecSync Contacts"
 
 @ExperimentalStdlibApi
-object ContactDecsyncUtils {
+object ContactsListeners {
     fun infoListener(path: List<String>, entry: Decsync.Entry, extra: Extra) {
         Log.d(TAG, "Execute info entry $entry")
         val info = entry.key.jsonPrimitive.content
@@ -73,36 +68,11 @@ object ContactDecsyncUtils {
                 if (extra.info.name == name) return
                 Log.d(TAG, "Rename address book ${extra.info.name} to $name")
 
-                // It is possible to temporarily have 2 accounts with the same name, since the names may be swapped
-                val oldAccount = extra.info.getAccount(extra.context)
-                val newAccount = Account(name, oldAccount.type)
-                val accountManager = AccountManager.get(extra.context)
-
-                // Create the new account if needed
-                accountManager.addAccountExplicitly(newAccount, null, null)
-                accountManager.setUserData(newAccount, "id", extra.info.id) // Separate, since the account may exist
-                accountManager.setUserData(newAccount, KEY_NUM_PROCESSED_ENTRIES, null)
-                ContentResolver.setSyncAutomatically(newAccount, ContactsContract.AUTHORITY, true)
-                ContentResolver.addPeriodicSync(newAccount, ContactsContract.AUTHORITY, Bundle(), 60 * 15)
-
-                // Move the contacts to the new account
-                val values = ContentValues()
-                values.put(RawContacts.ACCOUNT_NAME, name)
-                extra.provider.update(syncAdapterUri(oldAccount, RawContacts.CONTENT_URI), values,
-                        "${LocalContact.COLUMN_LOCAL_BOOKID}=?", arrayOf(extra.info.id))
-
-                // Delete the old account if it has no contacts
-                extra.provider.query(syncAdapterUri(oldAccount, RawContacts.CONTENT_URI), emptyArray(),
-                        null, null, null)!!.use { cursor ->
-                    if (!cursor.moveToFirst()) {
-                        if (Build.VERSION.SDK_INT >= 22) {
-                            AccountManager.get(extra.context).removeAccountExplicitly(oldAccount)
-                        } else {
-                            @Suppress("deprecation")
-                            AccountManager.get(extra.context).removeAccount(oldAccount, null, null)
-                        }
-                    }
+                val oldInfo = extra.info as AddressBookInfo
+                val newInfo = extra.info.let {
+                    AddressBookInfo(it.decsyncDir, it.id, name, it.deleted)
                 }
+                ContactsUtils.moveContacts(oldInfo.getAccount(extra.context), newInfo, extra)
             }
             else -> {
                 Log.w(TAG, "Unknown info key $info")

@@ -23,7 +23,10 @@ import android.app.Service
 import android.content.*
 import android.os.Bundle
 import android.os.IBinder
+import kotlinx.coroutines.runBlocking
+import org.decsync.cc.App
 
+@ExperimentalStdlibApi
 class CalendarsService : Service() {
 
     private var mCalendarsSyncAdapter: CalendarsSyncAdapter? = null
@@ -38,13 +41,17 @@ class CalendarsService : Service() {
     override fun onBind(intent: Intent): IBinder? = mCalendarsSyncAdapter?.syncAdapterBinder
 
     internal inner class CalendarsSyncAdapter(context: Context, autoInitialize: Boolean) : AbstractThreadedSyncAdapter(context, autoInitialize) {
-        @ExperimentalStdlibApi
         override fun onPerformSync(account: Account, extras: Bundle,
                                    authority: String, provider: ContentProviderClient,
                                    syncResult: SyncResult) {
             // Only queue as the SyncAdapter is canceled when it doesn't use the internet in the first minute
             // Mainly used to get notified about changes in the data
-            CalendarsWorker.enqueueAll(context)
+            runBlocking {
+                val decsyncDir = App.db.decsyncDirectoryDao().findByCalendarAccountName(account.name)
+                if (decsyncDir != null) {
+                    CalendarsWorker.enqueueDir(context, decsyncDir)
+                }
+            }
         }
     }
 }

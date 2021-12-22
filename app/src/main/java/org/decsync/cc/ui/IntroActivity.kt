@@ -1,13 +1,15 @@
-package org.decsync.cc
+package org.decsync.cc.ui
 
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.text.method.LinkMovementMethod
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.github.appintro.AppIntro2
@@ -15,10 +17,14 @@ import com.github.appintro.SlidePolicy
 import com.nononsenseapps.filepicker.FilePickerActivity
 import com.nononsenseapps.filepicker.Utils
 import kotlinx.android.synthetic.main.activity_intro_directory.*
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import org.decsync.cc.*
+import org.decsync.cc.model.DecsyncDirectory
 import org.decsync.library.DecsyncPrefUtils
 import org.decsync.library.checkDecsyncInfo
 
-const val CHOOSE_DECSYNC_FILE = 0
+private const val CHOOSE_DECSYNC_FILE = 1
 
 @ExperimentalStdlibApi
 class IntroActivity : AppIntro2() {
@@ -28,10 +34,13 @@ class IntroActivity : AppIntro2() {
         isWizardMode = true
         showStatusBar(true)
 
-        addSlide(SlideWelcome())
+        addSlide(SlideIntroWelcome())
         addSlide(SlideDirectory())
 
-        if (!PrefUtils.getUseSaf(this)) {
+        if (PrefUtils.getUseSaf(this)) {
+            // Reset stored DecSync dir by libdecsync
+            DecsyncPrefUtils.removeDecsyncDir(this)
+        } else {
             askForPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 2, true)
         }
     }
@@ -39,14 +48,34 @@ class IntroActivity : AppIntro2() {
     override fun onIntroFinished() {
         super.onIntroFinished()
 
-        PrefUtils.putIntroDone(this, true)
-        val intent = Intent(this, MainActivity::class.java)
-        startActivity(intent)
-        finish()
+        GlobalScope.launch {
+            val directory = if (PrefUtils.getUseSaf(this@IntroActivity)) {
+                DecsyncPrefUtils.getDecsyncDir(this@IntroActivity)!!.toString()
+            } else {
+                PrefUtils.getDecsyncFile(this@IntroActivity).path
+            }
+            val name = getString(R.string.decsync_dir_name_default)
+            val calendarAccountName = getString(R.string.account_name_calendars)
+            val taskListAccountName = getString(R.string.account_name_tasks)
+            val dirId = App.db.decsyncDirectoryDao().insert(
+                DecsyncDirectory(
+                    directory = directory,
+                    name = name,
+                    contactsFormatAccountName = "%s",
+                    calendarAccountName = calendarAccountName,
+                    taskListAccountName = taskListAccountName
+                )
+            )
+            PrefUtils.putSelectedDir(this@IntroActivity, dirId)
+            PrefUtils.putIntroDone(this@IntroActivity, true)
+            val intent = Intent(this@IntroActivity, MainActivity::class.java)
+            startActivity(intent)
+            finish()
+        }
     }
 }
 
-class SlideWelcome : Fragment() {
+class SlideIntroWelcome : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.activity_intro_welcome, container, false)
     }
@@ -79,6 +108,7 @@ class SlideDirectory : Fragment(), SlidePolicy {
                 startActivityForResult(intent, CHOOSE_DECSYNC_FILE)
             }
         }
+        view.findViewById<TextView>(R.id.intro_directory_desc).movementMethod = LinkMovementMethod.getInstance()
 
         return view
     }
@@ -108,13 +138,13 @@ class SlideDirectory : Fragment(), SlidePolicy {
     }
 
     override val isPolicyRespected: Boolean
-        get() {
-            return if (PrefUtils.getUseSaf(requireActivity())) {
-                DecsyncPrefUtils.getDecsyncDir(requireActivity()) != null
-            } else {
-                true
-            }
+    get() {
+        return if (PrefUtils.getUseSaf(requireActivity())) {
+            DecsyncPrefUtils.getDecsyncDir(requireActivity()) != null
+        } else {
+            true
         }
+    }
 
     override fun onUserIllegallyRequestedNextPage() {
         if (PrefUtils.getUseSaf(requireActivity())) {

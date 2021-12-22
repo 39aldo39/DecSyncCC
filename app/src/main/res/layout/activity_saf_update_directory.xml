@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_intro_directory">
+    android:background="@color/bg_saf_update_directory">
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -13,12 +13,12 @@
         android:orientation="vertical">
 
         <TextView
-            android:id="@+id/saf_update_title"
+            android:id="@+id/saf_update_directory_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="20dp"
             android:gravity="center"
-            android:text="@string/intro_directory_title"
+            android:text="@string/saf_update_directory_title"
             android:textColor="@android:color/white"
             android:textSize="@dimen/intro_title"
             android:textStyle="bold"/>
@@ -30,23 +30,36 @@
             tools:ignore="ContentDescription" />
 
         <Button
-            android:id="@+id/saf_update_button"
+            android:id="@+id/saf_update_directory_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="5dp"
             android:layout_gravity="center_horizontal"
             android:text="@string/intro_directory_button"
-            android:textSize="12sp" />
+            android:textSize="12sp"
+            android:textAllCaps="false" />
 
         <TextView
+            android:id="@+id/saf_update_directory_desc"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:layout_marginBottom="64dp"
+            android:layout_marginBottom="2dp"
             android:gravity="center"
-            android:text="@string/saf_update_desc"
+            android:text="@string/saf_update_directory_desc"
             android:textColor="@android:color/white"
             android:textSize="@dimen/intro_desc" />
+
+        <TextView
+            android:id="@+id/saf_update_directory_desc_path"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="64dp"
+            android:gravity="center"
+            android:textColor="@android:color/white"
+            android:textSize="@dimen/saf_update_path"
+            android:textStyle="bold" />
 
     </LinearLayout>
 

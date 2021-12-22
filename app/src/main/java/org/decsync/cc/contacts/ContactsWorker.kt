@@ -24,7 +24,6 @@ import android.accounts.AccountManager
 import android.content.*
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.provider.ContactsContract
 import android.provider.ContactsContract.RawContacts
 import androidx.core.content.ContextCompat
@@ -32,6 +31,8 @@ import androidx.work.*
 import at.bitfire.vcard4android.AndroidAddressBook
 import org.decsync.cc.*
 import org.decsync.cc.R
+import org.decsync.cc.model.DecsyncDirectory
+import org.decsync.library.NativeFile
 
 fun syncAdapterUri(account: Account, uri: Uri): Uri {
     return uri.buildUpon()
@@ -41,15 +42,15 @@ fun syncAdapterUri(account: Account, uri: Uri): Uri {
             .build()
 }
 
+@ExperimentalStdlibApi
 class ContactsWorker(context: Context, params: WorkerParameters) : CollectionWorker(context, params) {
     override val notificationTitleResId = R.string.notification_adding_contacts
 
-    override fun getCollectionInfo(id: String, name: String): CollectionInfo {
-        return AddressBookInfo(id, name, false)
+    override fun getCollectionInfo(decsyncDir: DecsyncDirectory, id: String, name: String): CollectionInfo {
+        return AddressBookInfo(decsyncDir, id, name, false)
     }
 
-    @ExperimentalStdlibApi
-    override fun sync(info: CollectionInfo, provider: ContentProviderClient): Boolean {
+    override suspend fun sync(info: CollectionInfo, provider: ContentProviderClient, nativeFile: NativeFile): Boolean {
         if (!PrefUtils.getUseSaf(context) &&
                 ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             return false
@@ -62,9 +63,7 @@ class ContactsWorker(context: Context, params: WorkerParameters) : CollectionWor
         PrefUtils.checkAppUpgrade(context)
 
         val extra = Extra(info, context, provider)
-        val decsyncDir = PrefUtils.getNativeFile(context)
-                ?: throw Exception(context.getString(R.string.settings_decsync_dir_not_configured))
-        val decsync = getDecsync(info, context, decsyncDir)
+        val decsync = getDecsync(info, context, nativeFile)
         val account = info.getAccount(context)
         val addressBook = AndroidAddressBook(account, provider, LocalContact.ContactFactory, LocalContact.GroupFactory)
 
@@ -110,28 +109,21 @@ class ContactsWorker(context: Context, params: WorkerParameters) : CollectionWor
     }
 
     companion object {
-        @ExperimentalStdlibApi
-        fun enqueueAll(context: Context) {
+        suspend fun enqueueAll(context: Context) {
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED ||
                     ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
                 return
             }
 
-            val provider = context.contentResolver.acquireContentProviderClient(ContactsContract.AUTHORITY) ?: return
-            try {
-                val accounts = AccountManager.get(context).getAccountsByType(context.getString(R.string.account_type_contacts))
-                for (account in accounts) {
-                    val id = AccountManager.get(context).getUserData(account, "id")
-                    val name = account.name
-                    val info = AddressBookInfo(id, name, false)
-                    enqueue(context, info)
-                }
-            } finally {
-                if (Build.VERSION.SDK_INT >= 24)
-                    provider.close()
-                else
-                    @Suppress("DEPRECATION")
-                    provider.release()
+            val accountManager = AccountManager.get(context)
+            val accounts = accountManager.getAccountsByType(context.getString(R.string.account_type_contacts))
+            for (account in accounts) {
+                val dirId = accountManager.getUserData(account, AddressBookInfo.KEY_DECSYNC_DIR_ID).toLong()
+                val decsyncDir = App.db.decsyncDirectoryDao().find(dirId) ?: continue
+                val id = accountManager.getUserData(account, AddressBookInfo.KEY_COLLECTION_ID)
+                val name = accountManager.getUserData(account, AddressBookInfo.KEY_NAME)
+                val info = AddressBookInfo(decsyncDir, id, name, false)
+                enqueue(context, info)
             }
         }
     }

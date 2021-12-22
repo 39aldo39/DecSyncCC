@@ -13,18 +13,19 @@ import at.bitfire.ical4android.TaskProvider
 import kotlinx.serialization.json.JsonPrimitive
 import org.decsync.cc.*
 import org.decsync.cc.R
+import org.decsync.cc.model.DecsyncDirectory
+import org.decsync.library.NativeFile
 import org.dmfs.tasks.contract.TaskContract
 
+@ExperimentalStdlibApi
 class TasksWorker(context: Context, params: WorkerParameters) : CollectionWorker(context, params) {
     override val notificationTitleResId = R.string.notification_adding_tasks
 
-    @ExperimentalStdlibApi
-    override fun getCollectionInfo(id: String, name: String): CollectionInfo {
-        return TaskListInfo(id, name, null, false)
+    override fun getCollectionInfo(decsyncDir: DecsyncDirectory, id: String, name: String): CollectionInfo {
+        return TaskListInfo(decsyncDir, id, name, null, false)
     }
 
-    @ExperimentalStdlibApi
-    override fun sync(info: CollectionInfo, provider: ContentProviderClient): Boolean {
+    override suspend fun sync(info: CollectionInfo, provider: ContentProviderClient, nativeFile: NativeFile): Boolean {
         if (!PrefUtils.getUseSaf(context) &&
                 ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             return false
@@ -50,18 +51,16 @@ class TasksWorker(context: Context, params: WorkerParameters) : CollectionWorker
             AccountManager.get(context).setAccountVisibility(account, providerName.packageName, AccountManager.VISIBILITY_VISIBLE)
 
         val taskList = LocalTaskList.findBySyncId(account, taskProvider, info.id) ?: return false
-        val decsyncDir = PrefUtils.getNativeFile(context)
-                ?: throw Exception(context.getString(R.string.settings_decsync_dir_not_configured))
         val color = taskList.color!!
         val extra = Extra(info, context, provider)
-        val decsync = getDecsync(info, context, decsyncDir)
+        val decsync = getDecsync(info, context, nativeFile)
 
         // Detect changed color
         if (color != taskList.oldColor) {
             decsync.setEntry(listOf("info"), JsonPrimitive("color"), JsonPrimitive(Utils.colorToString(color)))
 
             val values = ContentValues()
-            values.put(COLUMN_OLD_COLOR, color)
+            values.put(TasksUtils.COLUMN_OLD_COLOR, color)
             taskList.update(values)
         }
 
@@ -88,8 +87,14 @@ class TasksWorker(context: Context, params: WorkerParameters) : CollectionWorker
     }
 
     companion object {
-        @ExperimentalStdlibApi
-        fun enqueueAll(context: Context) {
+        suspend fun enqueueAll(context: Context) {
+            val decsyncDirs = App.db.decsyncDirectoryDao().all()
+            for (decsyncDir in decsyncDirs) {
+                enqueueDir(context, decsyncDir)
+            }
+        }
+
+        fun enqueueDir(context: Context, decsyncDir: DecsyncDirectory) {
             val authority = PrefUtils.getTasksAuthority(context) ?: return
             val providerName = TaskProvider.ProviderName.fromAuthority(authority)
             for (permission in providerName.permissions) {
@@ -100,11 +105,11 @@ class TasksWorker(context: Context, params: WorkerParameters) : CollectionWorker
 
             val provider = context.contentResolver.acquireContentProviderClient(authority) ?: return
             try {
-                val account = Account(PrefUtils.getTasksAccountName(context), context.getString(R.string.account_type_tasks))
+                val account = decsyncDir.getTaskListAccount(context)
                 val taskProvider = TaskProvider.fromProviderClient(context, providerName, provider)
                 val taskLists = AndroidTaskList.find(account, taskProvider, LocalTaskList.Factory, null, null)
                 for (taskList in taskLists) {
-                    val info = TaskListInfo(taskList.syncId!!, taskList.name!!, null, false)
+                    val info = TaskListInfo(decsyncDir, taskList.syncId!!, taskList.name!!, null, false)
                     enqueue(context, info)
                 }
             } finally {

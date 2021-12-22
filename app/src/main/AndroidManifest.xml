@@ -10,13 +10,22 @@
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
-    <uses-permission android:name="android.permission.AUTHENTICATE_ACCOUNTS" android:maxSdkVersion="22"/>
-    <uses-permission android:name="android.permission.GET_ACCOUNTS" android:maxSdkVersion="22"/>
-    <uses-permission android:name="android.permission.MANAGE_ACCOUNTS" android:maxSdkVersion="22"/>
+    <uses-permission android:name="android.permission.AUTHENTICATE_ACCOUNTS" android:maxSdkVersion="22" />
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" android:maxSdkVersion="22" />
+    <uses-permission android:name="android.permission.MANAGE_ACCOUNTS" android:maxSdkVersion="22" />
+
+    <!-- package visiblity – which apps do we need to see? -->
+    <queries>
+        <!-- task providers -->
+        <package android:name="org.dmfs.tasks" />
+        <package android:name="org.tasks" />
+    </queries>
 
     <application
+        android:name="org.decsync.cc.App"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -25,7 +34,6 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:replace="android:theme">
-
         <service
             android:name=".AuthenticatorServiceCalendars"
             android:exported="true"
@@ -33,6 +41,7 @@
             <intent-filter>
                 <action android:name="android.accounts.AccountAuthenticator" />
             </intent-filter>
+
             <meta-data
                 android:name="android.accounts.AccountAuthenticator"
                 android:resource="@xml/authenticator_calendars" />
@@ -44,6 +53,7 @@
             <intent-filter>
                 <action android:name="android.accounts.AccountAuthenticator" />
             </intent-filter>
+
             <meta-data
                 android:name="android.accounts.AccountAuthenticator"
                 android:resource="@xml/authenticator_contacts" />
@@ -55,6 +65,7 @@
             <intent-filter>
                 <action android:name="android.accounts.AccountAuthenticator" />
             </intent-filter>
+
             <meta-data
                 android:name="android.accounts.AccountAuthenticator"
                 android:resource="@xml/authenticator_tasks" />
@@ -66,6 +77,7 @@
             <intent-filter>
                 <action android:name="android.content.SyncAdapter" />
             </intent-filter>
+
             <meta-data
                 android:name="android.content.SyncAdapter"
                 android:resource="@xml/sync_calendars" />
@@ -77,6 +89,7 @@
             <intent-filter>
                 <action android:name="android.content.SyncAdapter" />
             </intent-filter>
+
             <meta-data
                 android:name="android.content.SyncAdapter"
                 android:resource="@xml/sync_contacts" />
@@ -89,49 +102,56 @@
             android:exported="true"
             tools:ignore="ExportedService">
             <intent-filter>
-                <action android:name="android.content.SyncAdapter"/>
+                <action android:name="android.content.SyncAdapter" />
             </intent-filter>
+
             <meta-data
                 android:name="android.content.SyncAdapter"
-                android:resource="@xml/sync_opentasks"/>
+                android:resource="@xml/sync_opentasks" />
         </service>
         <service
             android:name=".tasks.TasksOrgService"
             android:exported="true"
             tools:ignore="ExportedService">
             <intent-filter>
-                <action android:name="android.content.SyncAdapter"/>
+                <action android:name="android.content.SyncAdapter" />
             </intent-filter>
+
             <meta-data
                 android:name="android.content.SyncAdapter"
-                android:resource="@xml/sync_tasks_org"/>
+                android:resource="@xml/sync_tasks_org" />
         </service>
 
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.MainActivity"
             android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBar"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
         <activity
-            android:name=".GeneralPrefsActivity"
+            android:name=".ui.GeneralPrefsActivity"
             android:label="@string/title_activity_settings" />
         <activity
-            android:name=".IntroActivity"
+            android:name=".ui.IntroActivity"
             android:label="@string/title_activity_intro"
             android:theme="@style/IntroTheme" />
         <activity
-            android:name=".SafUpdateActivity"
+            android:name=".ui.AddDirectoryActivity"
+            android:label="@string/title_activity_add_directory"
+            android:theme="@style/IntroTheme" />
+        <activity
+            android:name=".ui.SafUpdateActivity"
             android:label="@string/title_activity_saf_update"
             android:theme="@style/IntroTheme" />
         <activity
             android:name="com.nononsenseapps.filepicker.FilePickerActivity"
             android:label="@string/app_name"
-            android:theme="@style/NNF_BaseTheme">
-        </activity>
+            android:theme="@style/NNF_BaseTheme" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -144,10 +164,4 @@
         </provider>
     </application>
 
-    <!-- package visiblity – which apps do we need to see? -->
-    <queries>
-        <!-- task providers -->
-        <package android:name="org.dmfs.tasks" />
-        <package android:name="org.tasks" />
-    </queries>
 </manifest>

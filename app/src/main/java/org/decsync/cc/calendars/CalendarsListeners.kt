@@ -18,10 +18,7 @@
 
 package org.decsync.cc.calendars
 
-import android.accounts.Account
-import android.content.ContentProviderClient
 import android.content.ContentValues
-import android.graphics.Color
 import android.provider.CalendarContract.Calendars
 import android.provider.CalendarContract.Events
 import android.util.Log
@@ -34,12 +31,10 @@ import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.library.Decsync
 import java.io.StringReader
 
-const val TAG = "DecSync Calendars"
-const val COLUMN_OLD_COLOR = Calendars.CAL_SYNC1
-const val COLUMN_NUM_PROCESSED_ENTRIES = Calendars.CAL_SYNC2
+private const val TAG = "DecSync Calendars"
 
 @ExperimentalStdlibApi
-object CalendarDecsyncUtils {
+object CalendarsListeners {
     fun infoListener(path: List<String>, entry: Decsync.Entry, extra: Extra) {
         Log.d(TAG, "Execute info entry $entry")
         val info = entry.key.jsonPrimitive.content
@@ -69,7 +64,7 @@ object CalendarDecsyncUtils {
                 val decsyncColor = entry.value.jsonPrimitive.content
                 val color = Utils.parseColor(decsyncColor) ?: return
                 val values = ContentValues()
-                addColor(values, color)
+                CalendarsUtils.addColor(values, color)
 
                 Log.d(TAG, "Set color of calendar ${extra.info.name} to ${entry.value}")
                 extra.provider.update(syncAdapterUri(account, Calendars.CONTENT_URI),
@@ -79,11 +74,6 @@ object CalendarDecsyncUtils {
                 Log.w(TAG, "Unknown info key $info")
             }
         }
-    }
-
-    fun addColor(values: ContentValues, color: Int) {
-        values.put(Calendars.CALENDAR_COLOR, color)
-        values.put(COLUMN_OLD_COLOR, color)
     }
 
     fun resourcesListener(path: List<String>, entry: Decsync.Entry, extra: Extra) {
@@ -104,7 +94,7 @@ object CalendarDecsyncUtils {
                 return
             }
         }
-        val calendar = AndroidCalendar.findByID(account, extra.provider, CalendarFactory, calendarId)
+        val calendar = AndroidCalendar.findByID(account, extra.provider, CalendarsUtils.CalendarFactory, calendarId)
         val id = extra.provider.query(syncAdapterUri(account, Events.CONTENT_URI), arrayOf(Events._ID),
                 "${Events._SYNC_ID}=?", arrayOf(uid), null)!!.use { cursor ->
             if (cursor.moveToFirst()) cursor.getLong(0) else null
@@ -149,18 +139,5 @@ object CalendarDecsyncUtils {
                 }
             }
         }
-    }
-
-    object CalendarFactory: AndroidCalendarFactory<CalendarFactory.LocalCalendar> {
-
-        class LocalCalendar(
-                account: Account,
-                provider: ContentProviderClient,
-                id: Long
-        ): AndroidCalendar<AndroidEvent>(account, provider, LocalEvent.EventFactory, id)
-
-        override fun newInstance(account: Account, provider: ContentProviderClient, id: Long) =
-                LocalCalendar(account, provider, id)
-
     }
 }

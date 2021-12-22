@@ -73,9 +73,6 @@
     <string name="intro_directory_button">选择目录</string>
     <string name="intro_directory_select">请选择一个 DecSync 目录</string>
 
-    <!-- SafUpdateActivity -->
-    <string name="saf_update_desc">由于安卓更新，你需要重新选择 DecSync 目录</string>
-
     <!-- Startup dialogs -->
     <string name="startup_battery_optimization">定期同步</string>
     <string name="startup_battery_optimization_message">您的设备会限制 DecSync CC 同步。要强制定期的 DecSync CC 同步间隔请关闭 \"电池 优化\"。</string>

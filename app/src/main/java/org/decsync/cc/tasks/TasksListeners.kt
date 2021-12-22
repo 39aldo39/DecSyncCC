@@ -14,13 +14,10 @@ import org.decsync.library.Decsync
 import org.dmfs.tasks.contract.TaskContract
 import java.io.StringReader
 
-const val COLUMN_OLD_COLOR = TaskContract.TaskLists.SYNC1
-const val COLUMN_NUM_PROCESSED_ENTRIES = TaskContract.TaskLists.SYNC2
-const val COLUMN_IS_NEW_TASK = TaskContract.Tasks.SYNC1
-const val TAG = "DecSync Tasks"
+private const val TAG = "DecSync Tasks"
 
 @ExperimentalStdlibApi
-object TasksDecsyncUtils {
+object TasksListeners {
     fun infoListener(path: List<String>, entry: Decsync.Entry, extra: Extra) {
         Log.d(TAG, "Execute info entry $entry")
         val info = entry.key.jsonPrimitive.content
@@ -56,7 +53,7 @@ object TasksDecsyncUtils {
                     val values = ContentValues()
                     val colorInt = Color.parseColor(color)
                     values.put(TaskContract.TaskLists.LIST_COLOR, colorInt)
-                    values.put(COLUMN_OLD_COLOR, colorInt)
+                    values.put(TasksUtils.COLUMN_OLD_COLOR, colorInt)
                     taskList.update(values)
                 } catch (e: IllegalArgumentException) {
                     Log.w(TAG, "Unknown color $color", e)
