@@ -57,6 +57,12 @@
     <string name="account_refresh_calendar_list">Refresh calendar list</string>
     <string name="account_create_new_calendar">Create new calendar</string>
     <string name="account_create_new_task_list">Create new task list</string>
+    <string name="create_new_collection">New collection</string>
+    <string name="import_existing_collection">Import existing collection</string>
+    <string name="select_account">Select account</string>
+    <string name="no_accounts">No accounts found</string>
+    <string name="contacts_account_info">%s: %d contacts</string>
+    <string name="calendar_account_info">%s (%s): %d events</string>
     <string name="create_collection_title">Name for new collection</string>
     <string name="rename_collection">Rename collection</string>
     <string name="rename_collection_title">New name for collection</string>
@@ -80,6 +86,9 @@
     <string name="notification_adding_contacts">Adding contacts of %s</string>
     <string name="notification_adding_events">Adding events of %s</string>
     <string name="notification_adding_tasks">Adding tasks of %s</string>
+    <string name="notification_importing_contacts">Importing contacts to %s</string>
+    <string name="notification_importing_events">Importing events to %s</string>
+    <string name="notification_importing_tasks">Importing tasks to %s</string>
     <string name="notification_saf_update_title">New Android version</string>
     <string name="notification_saf_update_message">The DecSync directory needs to be reselected</string>
 
@@ -148,6 +157,8 @@
     <!-- Notification channel -->
     <string name="channel_init_sync_name">Initial sync</string>
     <string name="channel_init_sync_description">Notification shown during the initial sync</string>
+    <string name="channel_import_name">Import</string>
+    <string name="channel_import_description">Notification shown during an import</string>
     <string name="channel_error_name">Errors</string>
     <string name="channel_error_description">Notification shown during an error</string>
 </resources>

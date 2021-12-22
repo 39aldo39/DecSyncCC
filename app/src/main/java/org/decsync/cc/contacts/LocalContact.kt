@@ -34,6 +34,18 @@ class LocalContact: AndroidContact {
 
     // Use fileName as UID and eTag as bookId
 
+    companion object {
+        const val COLUMN_LOCAL_UID = COLUMN_FILENAME
+        const val COLUMN_LOCAL_BOOKID = COLUMN_ETAG
+
+        fun writeDecsyncContact(decsync: Decsync<Extra>, uid: String, contact: Contact) {
+            val os = ByteArrayOutputStream()
+            contact.writeVCard(VCardVersion.V3_0, os) // Evolution does not support version 4.0 well (https://gitlab.gnome.org/GNOME/evolution-data-server/-/issues/8)
+            val vcard = os.toString("UTF-8")
+            decsync.setEntry(listOf("resources", uid), JsonNull, JsonPrimitive(vcard))
+        }
+    }
+
     private var uid: String?
         get() = this.fileName
         set(value) { this.fileName = value }
@@ -42,13 +54,15 @@ class LocalContact: AndroidContact {
         get() = this.eTag
         set(value) { this.eTag = value }
 
-    companion object {
-        const val COLUMN_LOCAL_UID = COLUMN_FILENAME
-        const val COLUMN_LOCAL_BOOKID = COLUMN_ETAG
-    }
-
     constructor(addressBook: AndroidAddressBook<LocalContact, *>, values: ContentValues) : super(addressBook, values)
-    constructor(addressBook: AndroidAddressBook<LocalContact,*>, contact: Contact, uid: String, bookId: String) : super(addressBook, contact, uid, bookId)
+    constructor(addressBook: AndroidAddressBook<LocalContact, *>, contact: Contact, uid: String, bookId: String) : super(addressBook, contact, uid, bookId)
+
+    fun getUidAndContact(): Pair<String, Contact> {
+        val contact = getContact()
+        val uid = uid ?: UUID.randomUUID().toString()
+        contact.uid = uid
+        return Pair(uid, contact)
+    }
 
     fun writeDeleteAction(decsync: Decsync<Extra>) {
         val uid = uid
@@ -62,14 +76,9 @@ class LocalContact: AndroidContact {
 
     fun writeUpdateAction(decsync: Decsync<Extra>) {
         val bookId = bookId // Populating the contact overwrites the bookId from the database
-        val contact = getContact()
-        val uid = uid ?: UUID.randomUUID().toString()
-        contact.uid = uid
 
-        val os = ByteArrayOutputStream()
-        contact.writeVCard(VCardVersion.V3_0, os) // Evolution does not support version 4.0 well (https://gitlab.gnome.org/GNOME/evolution-data-server/-/issues/8)
-        val vcard = os.toString("UTF-8")
-        decsync.setEntry(listOf("resources", uid), JsonNull, JsonPrimitive(vcard))
+        val (uid, contact) = getUidAndContact()
+        writeDecsyncContact(decsync, uid, contact)
 
         val values = ContentValues()
         values.put(COLUMN_LOCAL_UID, uid)
@@ -87,5 +96,4 @@ class LocalContact: AndroidContact {
         override fun fromProvider(addressBook: AndroidAddressBook<out AndroidContact, AndroidGroup>, values: ContentValues) =
                 AndroidGroup(addressBook, values)
     }
-
 }

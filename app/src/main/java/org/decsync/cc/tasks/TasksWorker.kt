@@ -14,12 +14,13 @@ import kotlinx.serialization.json.JsonPrimitive
 import org.decsync.cc.*
 import org.decsync.cc.R
 import org.decsync.cc.model.DecsyncDirectory
+import org.decsync.library.Decsync
 import org.decsync.library.NativeFile
 import org.dmfs.tasks.contract.TaskContract
 
 @ExperimentalStdlibApi
-class TasksWorker(context: Context, params: WorkerParameters) : CollectionWorker(context, params) {
-    override val notificationTitleResId = R.string.notification_adding_tasks
+class TasksWorker(context: Context, params: WorkerParameters) : CollectionWorker<Unit>(context, params) {
+    override val initSyncNotificationTitleResId = R.string.notification_adding_tasks
 
     override fun getCollectionInfo(decsyncDir: DecsyncDirectory, id: String, name: String): CollectionInfo {
         return TaskListInfo(decsyncDir, id, name, null, false)
@@ -85,6 +86,12 @@ class TasksWorker(context: Context, params: WorkerParameters) : CollectionWorker
         decsync.executeAllNewEntries(extra)
         return true
     }
+
+    override val importNotificationTitleResId = R.string.notification_importing_events
+
+    override fun getItems(provider: ContentProviderClient, info: CollectionInfo): List<Unit> = throw Exception("Importing tasks is not supported")
+    override fun writeItemDecsync(decsync: Decsync<Extra>, item: Unit) = throw Exception("Importing tasks is not supported")
+    override fun writeItemAndroid(info: CollectionInfo, provider: ContentProviderClient, item: Unit) = throw Exception("Importing tasks is not supported")
 
     companion object {
         suspend fun enqueueAll(context: Context) {

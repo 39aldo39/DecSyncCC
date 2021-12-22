@@ -4,6 +4,7 @@ import android.accounts.Account
 import android.accounts.AccountManager
 import android.content.ContentResolver
 import android.content.ContentValues
+import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import android.provider.ContactsContract
@@ -46,5 +47,31 @@ object ContactsUtils {
                 }
             }
         }
+    }
+
+    fun listAccounts(context: Context): List<Pair<Account, Int>> {
+        val accountsCountMap = mutableMapOf<Account, Int>()
+        val provider = context.contentResolver.acquireContentProviderClient(ContactsContract.AUTHORITY)!!
+        try {
+            provider.query(ContactsContract.RawContacts.CONTENT_URI,
+                arrayOf(ContactsContract.RawContacts.ACCOUNT_NAME, ContactsContract.RawContacts.ACCOUNT_TYPE),
+                null, null, null)!!.use { cursor ->
+                while (cursor.moveToNext()) {
+                    // TODO: add support for the device account with invalid Account(null, null)
+                    val accountName = cursor.getString(0) ?: continue
+                    val accountType = cursor.getString(1) ?: continue
+
+                    val account = Account(accountName, accountType)
+                    accountsCountMap.compute(account) { _, count -> (count ?: 0) + 1 }
+                }
+            }
+        } finally {
+            if (Build.VERSION.SDK_INT >= 24)
+                provider.close()
+            else
+                @Suppress("DEPRECATION")
+                provider.release()
+        }
+        return accountsCountMap.toList()
     }
 }

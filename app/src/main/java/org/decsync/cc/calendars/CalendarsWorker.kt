@@ -28,16 +28,21 @@ import android.provider.CalendarContract.Events
 import androidx.core.content.ContextCompat
 import androidx.work.*
 import at.bitfire.ical4android.AndroidCalendar
+import at.bitfire.ical4android.Event
 import kotlinx.serialization.json.JsonPrimitive
 import org.decsync.cc.*
 import org.decsync.cc.R
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.cc.model.DecsyncDirectory
+import org.decsync.library.Decsync
 import org.decsync.library.NativeFile
 
 @ExperimentalStdlibApi
-class CalendarsWorker(context: Context, params: WorkerParameters) : CollectionWorker(context, params) {
-    override val notificationTitleResId = R.string.notification_adding_events
+typealias CalendarItem = Triple<Long, String, Event>
+
+@ExperimentalStdlibApi
+class CalendarsWorker(context: Context, params: WorkerParameters) : CollectionWorker<CalendarItem>(context, params) {
+    override val initSyncNotificationTitleResId = R.string.notification_adding_events
 
     override fun getCollectionInfo(decsyncDir: DecsyncDirectory, id: String, name: String): CollectionInfo {
         return CalendarInfo(decsyncDir, id, name, null, false)
@@ -124,6 +129,38 @@ class CalendarsWorker(context: Context, params: WorkerParameters) : CollectionWo
         }
     }
 
+    override val importNotificationTitleResId = R.string.notification_importing_events
+
+    override fun getItems(provider: ContentProviderClient, info: CollectionInfo): List<CalendarItem> {
+        val calendarId = PrefUtils.getImportedCalendarId(context, info)
+        val calendar = AndroidCalendar.findByID(info.getAccount(context), provider, CalendarsUtils.CalendarFactory, calendarId)
+        val events = mutableListOf<Triple<Long, String, Event>>()
+        provider.query(Events.CONTENT_URI, arrayOf(Events._ID),
+            "${Events.CALENDAR_ID}=? AND ${Events.ORIGINAL_ID} IS NULL AND ${Events.DELETED}=0",
+            arrayOf(calendarId.toString()), null)!!.use { cursor ->
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(0)
+
+                val values = ContentValues()
+                values.put(Events._ID, id)
+                val (uid, event) = LocalEvent(calendar, values).getUidAndEvent()
+                events.add(Triple(calendarId, uid, event))
+            }
+        }
+        return events
+    }
+
+    override fun writeItemDecsync(decsync: Decsync<Extra>, item: CalendarItem) {
+        val (_, uid, event) = item
+        LocalEvent.writeDecsyncEvent(decsync, uid, event)
+    }
+
+    override fun writeItemAndroid(info: CollectionInfo, provider: ContentProviderClient, item: CalendarItem) {
+        val (calendarId, _, event) = item
+        val calendar = AndroidCalendar.findByID(info.getAccount(context), provider, CalendarsUtils.CalendarFactory, calendarId)
+        LocalEvent(calendar, event).add()
+    }
+
     companion object {
         suspend fun enqueueAll(context: Context) {
             val decsyncDirs = App.db.decsyncDirectoryDao().all()
@@ -147,6 +184,7 @@ class CalendarsWorker(context: Context, params: WorkerParameters) : CollectionWo
                     while (calCursor.moveToNext()) {
                         val id = calCursor.getString(0)
                         val name = calCursor.getString(1)
+
                         val info = CalendarInfo(decsyncDir, id, name, null, false)
                         enqueue(context, info)
                     }

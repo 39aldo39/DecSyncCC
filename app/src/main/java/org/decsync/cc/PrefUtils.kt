@@ -18,6 +18,7 @@
 
 package org.decsync.cc
 
+import android.accounts.Account
 import android.content.Context
 import android.os.Build
 import android.os.Environment
@@ -42,7 +43,10 @@ object PrefUtils {
     const val CALENDAR_ACCOUNT_NAME = "calendar_account_name"
     const val TASKS_ACCOUNT_NAME = "tasks_account_name"
     const val TASKS_AUTHORITY = "tasks_authority"
-    const val IS_INIT_SYNC = "is_init_sync"
+    const val SYNC_KIND = "sync_kind"
+    const val IMPORTED_ACCOUNT_NAME = "imported_account_name"
+    const val IMPORTED_ACCOUNT_TYPE = "imported_account_type"
+    const val IMPORTED_COLLECTION_ID = "imported_collection_id"
     const val SHOW_DELETED_COLLECTIONS = "show_deleted_collections"
     const val SELECTED_DIR = "selected_dir"
 
@@ -141,16 +145,65 @@ object PrefUtils {
         AppCompatDelegate.setDefaultNightMode(mode)
     }
 
-    fun getIsInitSync(context: Context, info: CollectionInfo): Boolean {
+    @ExperimentalStdlibApi
+    fun getSyncKind(context: Context, info: CollectionInfo): Int {
         val settings = PreferenceManager.getDefaultSharedPreferences(context)
-        val key = "${IS_INIT_SYNC}-${info.syncType}-${info.id}"
-        return settings.getBoolean(key, false)
+        val key = "${SYNC_KIND}-${info.syncType}-${info.id}"
+        return settings.getInt(key, CollectionWorker.SYNC_KIND_STANDARD)
     }
 
-    fun putIsInitSync(context: Context, info: CollectionInfo, value: Boolean) {
+    @ExperimentalStdlibApi
+    fun putSyncKind(context: Context, info: CollectionInfo, value: Int) {
         val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
-        val key = "${IS_INIT_SYNC}-${info.syncType}-${info.id}"
-        editor.putBoolean(key, value)
+        val key = "${SYNC_KIND}-${info.syncType}-${info.id}"
+        editor.putInt(key, value)
+        editor.apply()
+    }
+
+    fun getImportedAccount(context: Context, info: CollectionInfo): Account {
+        val settings = PreferenceManager.getDefaultSharedPreferences(context)
+        val keyName = "${IMPORTED_ACCOUNT_NAME}-${info.syncType}-${info.id}"
+        val keyType = "${IMPORTED_ACCOUNT_TYPE}-${info.syncType}-${info.id}"
+        val name = settings.getString(keyName, null)
+        val type = settings.getString(keyType, null)
+        return Account(name, type)
+    }
+
+    fun putImportedAccount(context: Context, info: CollectionInfo, value: Account) {
+        val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
+        val keyName = "${IMPORTED_ACCOUNT_NAME}-${info.syncType}-${info.id}"
+        val keyType = "${IMPORTED_ACCOUNT_TYPE}-${info.syncType}-${info.id}"
+        editor.putString(keyName, value.name)
+        editor.putString(keyType, value.type)
+        editor.apply()
+    }
+
+    fun removeImportedAccount(context: Context, info: CollectionInfo) {
+        val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
+        val keyName = "${IMPORTED_ACCOUNT_NAME}-${info.syncType}-${info.id}"
+        val keyType = "${IMPORTED_ACCOUNT_TYPE}-${info.syncType}-${info.id}"
+        editor.remove(keyName)
+        editor.remove(keyType)
+        editor.apply()
+    }
+
+    fun getImportedCalendarId(context: Context, info: CollectionInfo): Long {
+        val settings = PreferenceManager.getDefaultSharedPreferences(context)
+        val key = "${IMPORTED_COLLECTION_ID}-${info.syncType}-${info.id}"
+        return settings.getLong(key, -1)
+    }
+
+    fun putImportedCalendarId(context: Context, info: CollectionInfo, value: Long) {
+        val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
+        val key = "${IMPORTED_COLLECTION_ID}-${info.syncType}-${info.id}"
+        editor.putLong(key, value)
+        editor.apply()
+    }
+
+    fun removeImportedCalendarId(context: Context, info: CollectionInfo) {
+        val editor = PreferenceManager.getDefaultSharedPreferences(context).edit()
+        val key = "${IMPORTED_COLLECTION_ID}-${info.syncType}-${info.id}"
+        editor.remove(key)
         editor.apply()
     }
 

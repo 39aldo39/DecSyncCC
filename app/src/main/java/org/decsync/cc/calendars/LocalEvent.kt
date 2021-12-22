@@ -31,8 +31,25 @@ import java.util.*
 
 @ExperimentalStdlibApi
 class LocalEvent: AndroidEvent {
+
+    companion object {
+        fun writeDecsyncEvent(decsync: Decsync<Extra>, uid: String, event: Event) {
+            val os = ByteArrayOutputStream()
+            event.write(os)
+            val ical = os.toString("UTF-8")
+            decsync.setEntry(listOf("resources", uid), JsonNull, JsonPrimitive(ical))
+        }
+    }
+
     constructor(calendar: AndroidCalendar<*>, event: Event) : super(calendar, event)
     constructor(calendar: AndroidCalendar<*>, values: ContentValues) : super(calendar, values)
+
+    fun getUidAndEvent(): Pair<String, Event> {
+        val event = requireNotNull(event)
+        val uid = event.uid ?: UUID.randomUUID().toString()
+        event.uid = uid
+        return Pair(uid, event)
+    }
 
     fun writeDeleteAction(decsync: Decsync<Extra>) {
         val event = requireNotNull(event)
@@ -46,14 +63,8 @@ class LocalEvent: AndroidEvent {
     }
 
     fun writeUpdateAction(decsync: Decsync<Extra>) {
-        val event = requireNotNull(event)
-        val uid = event.uid ?: UUID.randomUUID().toString()
-        event.uid = uid
-
-        val os = ByteArrayOutputStream()
-        event.write(os)
-        val ical = os.toString("UTF-8")
-        decsync.setEntry(listOf("resources", uid), JsonNull, JsonPrimitive(ical))
+        val (uid, event) = getUidAndEvent()
+        writeDecsyncEvent(decsync, uid, event)
 
         val values = ContentValues()
         values.put(Events.UID_2445, uid)

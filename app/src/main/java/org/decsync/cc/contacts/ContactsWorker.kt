@@ -29,9 +29,11 @@ import android.provider.ContactsContract.RawContacts
 import androidx.core.content.ContextCompat
 import androidx.work.*
 import at.bitfire.vcard4android.AndroidAddressBook
+import at.bitfire.vcard4android.Contact
 import org.decsync.cc.*
 import org.decsync.cc.R
 import org.decsync.cc.model.DecsyncDirectory
+import org.decsync.library.Decsync
 import org.decsync.library.NativeFile
 
 fun syncAdapterUri(account: Account, uri: Uri): Uri {
@@ -42,9 +44,11 @@ fun syncAdapterUri(account: Account, uri: Uri): Uri {
             .build()
 }
 
+typealias ContactItem = Pair<String, Contact>
+
 @ExperimentalStdlibApi
-class ContactsWorker(context: Context, params: WorkerParameters) : CollectionWorker(context, params) {
-    override val notificationTitleResId = R.string.notification_adding_contacts
+class ContactsWorker(context: Context, params: WorkerParameters) : CollectionWorker<ContactItem>(context, params) {
+    override val initSyncNotificationTitleResId = R.string.notification_adding_contacts
 
     override fun getCollectionInfo(decsyncDir: DecsyncDirectory, id: String, name: String): CollectionInfo {
         return AddressBookInfo(decsyncDir, id, name, false)
@@ -106,6 +110,39 @@ class ContactsWorker(context: Context, params: WorkerParameters) : CollectionWor
 
         decsync.executeAllNewEntries(extra)
         return true
+    }
+
+    override val importNotificationTitleResId = R.string.notification_importing_contacts
+
+    override fun getItems(provider: ContentProviderClient, info: CollectionInfo): List<ContactItem> {
+        val importedAccount = PrefUtils.getImportedAccount(context, info)
+        val addressBook = AndroidAddressBook(importedAccount, provider, LocalContact.ContactFactory, LocalContact.GroupFactory)
+        val contacts = mutableListOf<Pair<String, Contact>>()
+        provider.query(RawContacts.CONTENT_URI, arrayOf(RawContacts._ID),
+            "${RawContacts.ACCOUNT_NAME}=? AND ${RawContacts.ACCOUNT_TYPE}=? AND ${RawContacts.DELETED}=0",
+            arrayOf(importedAccount.name, importedAccount.type), null)!!.use { cursor ->
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(0)
+
+                val values = ContentValues()
+                values.put(RawContacts._ID, id)
+                val (uid, contact) = LocalContact(addressBook, values).getUidAndContact()
+                contacts.add(Pair(uid, contact))
+            }
+        }
+        return contacts
+    }
+
+    override fun writeItemDecsync(decsync: Decsync<Extra>, item: ContactItem) {
+        val (uid, contact) = item
+        LocalContact.writeDecsyncContact(decsync, uid, contact)
+    }
+
+    override fun writeItemAndroid(info: CollectionInfo, provider: ContentProviderClient, item: ContactItem) {
+        val (uid, contact) = item
+        val bookId = info.id
+        val addressBook = AndroidAddressBook(info.getAccount(context), provider, LocalContact.ContactFactory, LocalContact.GroupFactory)
+        LocalContact(addressBook, contact, uid, bookId).add()
     }
 
     companion object {

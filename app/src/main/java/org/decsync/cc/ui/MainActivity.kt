@@ -10,6 +10,7 @@
 package org.decsync.cc.ui
 
 import android.Manifest
+import android.accounts.Account
 import android.accounts.AccountManager
 import android.annotation.SuppressLint
 import android.annotation.TargetApi
@@ -79,6 +80,10 @@ private const val PERMISSIONS_CALENDAR_END = 299
 private const val PERMISSIONS_TASK_LIST_START = 300
 private const val PERMISSIONS_TASK_LIST_END = 399
 
+private const val PERMISSIONS_CREATE_ADDRESS_BOOK = 10
+private const val PERMISSIONS_CREATE_CALENDAR = 11
+private const val PERMISSIONS_CREATE_TASK_LIST = 12
+
 private const val REQUEST_ADD_DIRECTORY = 1
 
 @ExperimentalStdlibApi
@@ -89,6 +94,7 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
     private var decsyncDir: DecsyncDirectory? = null
     private var nativeFile: NativeFile? = null
     private var correctPermissions = false
+    private val deletedCollections = mutableSetOf<Pair<String, String>>()
 
     @SuppressLint("BatteryLife")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -304,6 +310,7 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
         val decsyncDir = decsyncDir ?: return emptyList()
         val nativeFile = nativeFile ?: return emptyList()
         val decsyncIds = listDecsyncCollections(nativeFile, "contacts")
+            .filterNot { deletedCollections.contains(Pair("contacts", it)) }
         return decsyncIds.mapNotNull { id ->
             val info = Decsync.getStaticInfo(nativeFile, "contacts", id)
             val deleted = info[JsonPrimitive("deleted")]?.jsonPrimitive?.boolean ?: false
@@ -364,6 +371,7 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
         val decsyncDir = decsyncDir ?: return emptyList()
         val nativeFile = nativeFile ?: return emptyList()
         val decsyncIds = listDecsyncCollections(nativeFile, "calendars")
+            .filterNot { deletedCollections.contains(Pair("calendars", it)) }
         return decsyncIds.mapNotNull {
             val info = Decsync.getStaticInfo(nativeFile, "calendars", it)
             val deleted = info[JsonPrimitive("deleted")]?.jsonPrimitive?.boolean ?: false
@@ -439,6 +447,7 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
         val decsyncDir = decsyncDir ?: return emptyList()
         val nativeFile = nativeFile ?: return emptyList()
         val decsyncIds = listDecsyncCollections(nativeFile, "tasks")
+            .filterNot { deletedCollections.contains(Pair("tasks", it)) }
         return decsyncIds.mapNotNull {
             val info = Decsync.getStaticInfo(nativeFile, "tasks", it)
             val deleted = info[JsonPrimitive("deleted")]?.jsonPrimitive?.boolean ?: false
@@ -535,6 +544,9 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
                 }
             }
             PERMISSIONS_TASK_LIST_END -> {} // Invalid position
+            PERMISSIONS_CREATE_ADDRESS_BOOK -> createAddressBookClicked()
+            PERMISSIONS_CREATE_CALENDAR -> createCalendarClicked()
+            PERMISSIONS_CREATE_TASK_LIST -> createTaskListClicked()
         }
     }
 
@@ -656,115 +668,289 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
     }
 
     override fun onMenuItemClick(item: MenuItem): Boolean {
-        val decsyncDir = decsyncDir ?: return false
-        when (item.itemId) {
-            R.id.create_address_book -> {
-                if (!correctPermissions) {
-                    ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 0)
-                    return false
-                }
-                val adapter = address_books.adapter as CollectionAdapter
-                var defaultName = getString(R.string.account_collection_name_default)
-                for (i in 2 .. 100) {
-                    if (adapter.all { it.name != defaultName }) break
-                    defaultName = getString(R.string.account_collection_name_default_n, i)
-                }
-                val input = EditText(this)
-                input.setText(defaultName)
-                AlertDialog.Builder(this)
-                        .setTitle(R.string.create_collection_title)
-                        .setView(input)
-                        .setPositiveButton(android.R.string.ok) { _, _ ->
-                            val name = input.text.toString()
-                            if (name.isNotBlank()) {
-                                val id = UUID.randomUUID().toString()
-                                val info = AddressBookInfo(decsyncDir, id, name, false)
-                                GlobalScope.launch {
-                                    setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
-                                }
-                            }
-                        }
-                        .setNegativeButton(android.R.string.cancel) { _, _ -> }
-                        .show()
-            }
-            R.id.create_calendar -> {
-                if (!correctPermissions) {
-                    ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 0)
-                    return false
-                }
-                val adapter = calendars.adapter as CollectionAdapter
-                var defaultName = getString(R.string.account_collection_name_default)
-                for (i in 2 .. 100) {
-                    if (adapter.all { it.name != defaultName }) break
-                    defaultName = getString(R.string.account_collection_name_default_n, i)
-                }
-                val input = EditText(this)
-                input.setText(defaultName)
-                AlertDialog.Builder(this)
-                        .setTitle(R.string.create_collection_title)
-                        .setView(input)
-                        .setPositiveButton(android.R.string.ok) { _, _ ->
-                            val name = input.text.toString()
-                            if (name.isNotBlank()) {
-                                ColorPickerDialogBuilder.with(this).apply {
-                                    wheelType(ColorPickerView.WHEEL_TYPE.CIRCLE)
-                                    density(7)
-                                    lightnessSliderOnly()
-                                    setPositiveButton(android.R.string.ok) { _, color, _ ->
-                                        GlobalScope.launch {
-                                            val id = UUID.randomUUID().toString()
-                                            val info = CalendarInfo(decsyncDir, id, name, color, false)
-                                            setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
-                                            setCollectionInfo(info, JsonPrimitive("color"), JsonPrimitive(Utils.colorToString(color)))
-                                        }
-                                    }
-                                    setNegativeButton(android.R.string.cancel) { _, _ -> }
-                                }.build().show()
-                            }
-                        }
-                        .setNegativeButton(android.R.string.cancel) { _, _ -> }
-                        .show()
-            }
-            R.id.create_task_list -> {
-                if (!correctPermissions) {
-                    ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 0)
-                    return false
-                }
-                val adapter = task_lists.adapter as CollectionAdapter
-                var defaultName = getString(R.string.account_collection_name_default)
-                for (i in 2 .. 100) {
-                    if (adapter.all { it.name != defaultName }) break
-                    defaultName = getString(R.string.account_collection_name_default_n, i)
-                }
-                val input = EditText(this)
-                input.setText(defaultName)
-                AlertDialog.Builder(this)
-                        .setTitle(R.string.create_collection_title)
-                        .setView(input)
-                        .setPositiveButton(android.R.string.ok) { _, _ ->
-                            val name = input.text.toString()
-                            if (name.isNotBlank()) {
-                                ColorPickerDialogBuilder.with(this).apply {
-                                    wheelType(ColorPickerView.WHEEL_TYPE.CIRCLE)
-                                    density(7)
-                                    lightnessSliderOnly()
-                                    setPositiveButton(android.R.string.ok) { _, color, _ ->
-                                        GlobalScope.launch {
-                                            val id = UUID.randomUUID().toString()
-                                            val info = TaskListInfo(decsyncDir, id, name, color, false)
-                                            setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
-                                            setCollectionInfo(info, JsonPrimitive("color"), JsonPrimitive(Utils.colorToString(color)))
-                                        }
-                                    }
-                                    setNegativeButton(android.R.string.cancel) { _, _ -> }
-                                }.build().show()
-                            }
-                        }
-                        .setNegativeButton(android.R.string.cancel) { _, _ -> }
-                        .show()
+        if (decsyncDir == null) return false
+        return when (item.itemId) {
+            R.id.create_address_book -> createAddressBookClicked()
+            R.id.create_calendar -> createCalendarClicked()
+            R.id.create_task_list -> createTaskListClicked()
+            else -> false
+        }
+    }
+
+    private fun createAddressBookClicked(): Boolean {
+        if (!correctPermissions) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), PERMISSIONS_CREATE_ADDRESS_BOOK)
+            return false
+        }
+        val contactsPermissions = listOf(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS)
+        val permissions = mutableListOf<String>()
+        for (permission in contactsPermissions) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(permission)
             }
         }
-        return false
+        if (permissions.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, permissions.toTypedArray(), PERMISSIONS_CREATE_ADDRESS_BOOK)
+            return false
+        }
+        val items = arrayOf(getString(R.string.create_new_collection), getString(R.string.import_existing_collection))
+        AlertDialog.Builder(this)
+            .setTitle(R.string.account_create_new_address_book)
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> addAddressBook()
+                    1 -> {
+                        val accounts = ContactsUtils.listAccounts(this)
+                        if (accounts.isEmpty()) {
+                            Utils.showBasicDialog(this, getString(R.string.select_account), getString(R.string.no_accounts))
+                        } else {
+                            AlertDialog.Builder(this)
+                                .setTitle(R.string.select_account)
+                                .setItems(accounts.map { (account, count) ->
+                                    // TODO: add label of account.type (how?)
+                                    getString(R.string.contacts_account_info, account.name, count)
+                                }.toTypedArray()) { _, which ->
+                                    val importedAccount = accounts[which].first
+                                    addAddressBook(importedAccount)
+                                }.setNegativeButton(android.R.string.cancel) { _, _ -> }
+                                .show()
+                        }
+                    }
+                }
+            }.setNegativeButton(android.R.string.cancel) { _, _ -> }
+            .show()
+        return true
+    }
+
+    private fun createCalendarClicked(): Boolean {
+        if (!correctPermissions) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), PERMISSIONS_CREATE_CALENDAR)
+            return false
+        }
+        val calendarPermissions = listOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
+        val permissions = mutableListOf<String>()
+        for (permission in calendarPermissions) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(permission)
+            }
+        }
+        if (permissions.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, permissions.toTypedArray(), PERMISSIONS_CREATE_CALENDAR)
+            return false
+        }
+        val items = arrayOf(getString(R.string.create_new_collection), getString(R.string.import_existing_collection))
+        AlertDialog.Builder(this)
+            .setTitle(R.string.account_create_new_calendar)
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> addCalendar()
+                    1 -> {
+                        val calendars = CalendarsUtils.listCalendars(this)
+                        if (calendars.isEmpty()) {
+                            Utils.showBasicDialog(this, getString(R.string.select_account), getString(R.string.no_accounts))
+                        } else {
+                            AlertDialog.Builder(this)
+                                .setTitle(R.string.select_account)
+                                .setItems(calendars.map { (_, value) ->
+                                    val (accountName, displayName, count) = value
+                                    getString(R.string.calendar_account_info, displayName, accountName, count)
+                                }.toTypedArray()) { _, which ->
+                                    val calendarId = calendars[which].first
+                                    addCalendar(calendarId)
+                                }.setNegativeButton(android.R.string.cancel) { _, _ -> }
+                                .show()
+                        }
+                    }
+                }
+            }.setNegativeButton(android.R.string.cancel) { _, _ -> }
+            .show()
+        return true
+    }
+
+    private fun createTaskListClicked(): Boolean {
+        if (!correctPermissions) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), PERMISSIONS_CREATE_TASK_LIST)
+            return false
+        }
+        val success = checkTaskListPermissions {
+            addTaskList()
+        }
+        if (!success) return false
+        addTaskList()
+        return true
+    }
+
+    private fun addAddressBook(importedAccount: Account? = null) {
+        val decsyncDir = decsyncDir ?: return
+        val adapter = address_books.adapter as CollectionAdapter
+        var defaultName = getString(R.string.account_collection_name_default)
+        for (i in 2 .. 100) {
+            if (adapter.all { it.name != defaultName }) break
+            defaultName = getString(R.string.account_collection_name_default_n, i)
+        }
+        val input = EditText(this)
+        input.setText(defaultName)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.create_collection_title)
+            .setView(input)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                GlobalScope.launch {
+                    val name = input.text.toString()
+                    if (name.isNotBlank()) {
+                        val id = UUID.randomUUID().toString()
+                        val info = AddressBookInfo(decsyncDir, id, name, false)
+                        if (importedAccount != null) {
+                            PrefUtils.putImportedAccount(this@MainActivity, info, importedAccount)
+                            PrefUtils.putSyncKind(this@MainActivity, info, CollectionWorker.SYNC_KIND_IMPORT)
+                        } else {
+                            PrefUtils.putSyncKind(this@MainActivity, info, CollectionWorker.SYNC_KIND_INIT_SYNC)
+                        }
+                        setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
+                        info.create(this@MainActivity)
+                        CollectionWorker.enqueue(this@MainActivity, info)
+                    }
+                }
+            }
+            .setNegativeButton(android.R.string.cancel) { _, _ -> }
+            .show()
+    }
+
+    private fun addCalendar(importedCalendarId: Long? = null) {
+        val decsyncDir = decsyncDir ?: return
+        val adapter = calendars.adapter as CollectionAdapter
+        var defaultName = getString(R.string.account_collection_name_default)
+        for (i in 2 .. 100) {
+            if (adapter.all { it.name != defaultName }) break
+            defaultName = getString(R.string.account_collection_name_default_n, i)
+        }
+        val input = EditText(this)
+        input.setText(defaultName)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.create_collection_title)
+            .setView(input)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val name = input.text.toString()
+                if (name.isNotBlank()) {
+                    ColorPickerDialogBuilder.with(this).apply {
+                        wheelType(ColorPickerView.WHEEL_TYPE.CIRCLE)
+                        density(7)
+                        lightnessSliderOnly()
+                        setPositiveButton(android.R.string.ok) { _, color, _ ->
+                            GlobalScope.launch {
+                                val id = UUID.randomUUID().toString()
+                                val info = CalendarInfo(decsyncDir, id, name, color, false)
+                                if (importedCalendarId != null) {
+                                    PrefUtils.putImportedCalendarId(this@MainActivity, info, importedCalendarId)
+                                    PrefUtils.putSyncKind(this@MainActivity, info, CollectionWorker.SYNC_KIND_IMPORT)
+                                } else {
+                                    PrefUtils.putSyncKind(this@MainActivity, info, CollectionWorker.SYNC_KIND_INIT_SYNC)
+                                }
+                                setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
+                                setCollectionInfo(info, JsonPrimitive("color"), JsonPrimitive(Utils.colorToString(color)))
+                                info.create(this@MainActivity)
+                                CollectionWorker.enqueue(this@MainActivity, info)
+                            }
+                        }
+                        setNegativeButton(android.R.string.cancel) { _, _ -> }
+                    }.build().show()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel) { _, _ -> }
+            .show()
+    }
+
+    private fun addTaskList() {
+        val decsyncDir = decsyncDir ?: return
+        val adapter = task_lists.adapter as CollectionAdapter
+        var defaultName = getString(R.string.account_collection_name_default)
+        for (i in 2 .. 100) {
+            if (adapter.all { it.name != defaultName }) break
+            defaultName = getString(R.string.account_collection_name_default_n, i)
+        }
+        val input = EditText(this)
+        input.setText(defaultName)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.create_collection_title)
+            .setView(input)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val name = input.text.toString()
+                if (name.isNotBlank()) {
+                    ColorPickerDialogBuilder.with(this).apply {
+                        wheelType(ColorPickerView.WHEEL_TYPE.CIRCLE)
+                        density(7)
+                        lightnessSliderOnly()
+                        setPositiveButton(android.R.string.ok) { _, color, _ ->
+                            GlobalScope.launch {
+                                val id = UUID.randomUUID().toString()
+                                val info = TaskListInfo(decsyncDir, id, name, color, false)
+                                setCollectionInfo(info, JsonPrimitive("name"), JsonPrimitive(name))
+                                setCollectionInfo(info, JsonPrimitive("color"), JsonPrimitive(Utils.colorToString(color)))
+                                info.create(this@MainActivity)
+                                CollectionWorker.enqueue(this@MainActivity, info)
+                            }
+                        }
+                        setNegativeButton(android.R.string.cancel) { _, _ -> }
+                    }.build().show()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel) { _, _ -> }
+            .show()
+    }
+
+    private fun checkTaskListPermissions(callback: () -> Unit): Boolean {
+        val authority = PrefUtils.getTasksAuthority(this)
+        if (authority != null) return true
+        val providerNames = mutableListOf<TaskProvider.ProviderName>()
+        val names = mutableListOf<String>()
+        for ((providerName, name) in Utils.TASK_PROVIDERS.zip(Utils.TASK_PROVIDER_NAMES)) {
+            try {
+                packageManager.getPackageInfo(providerName.packageName, 0)
+                providerNames.add(providerName)
+                names.add(getString(name))
+            } catch (e: PackageManager.NameNotFoundException) {
+            }
+        }
+        return when (providerNames.size) {
+            0 -> {
+                val allNames = Utils.TASK_PROVIDER_NAMES.map { getString(it) }
+                var providerName: TaskProvider.ProviderName? = null
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.no_task_app_title)
+                    .setSingleChoiceItems(allNames.toTypedArray(), -1) { _, which ->
+                        providerName = Utils.TASK_PROVIDERS[which]
+                    }
+                    .setPositiveButton(android.R.string.ok) { _, _ ->
+                        providerName?.let {
+                            Utils.installApp(this, it.packageName)
+                        }
+                    }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
+                false
+            }
+            1 -> {
+                val providerName = providerNames[0]
+                PrefUtils.putTasksAuthority(this, providerName.authority)
+                true
+            }
+            else -> {
+                var providerName: TaskProvider.ProviderName? = null
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.choose_task_app_title)
+                    .setSingleChoiceItems(names.toTypedArray(), -1) { _, which ->
+                        providerName = providerNames[which]
+                    }
+                    .setPositiveButton(android.R.string.ok) { _, _ ->
+                        providerName?.let {
+                            PrefUtils.putTasksAuthority(this, it.authority)
+                            callback()
+                        }
+                    }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
+                false
+            }
+        }
     }
 
     private val onCollectionClickListener = AdapterView.OnItemClickListener { parent, view, position, id ->
@@ -775,59 +961,10 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
         val nowChecked = !info.isEnabled(this)
 
         if (info is TaskListInfo) {
-            val authority = PrefUtils.getTasksAuthority(this)
-            if (authority == null) {
-                val providerNames = mutableListOf<TaskProvider.ProviderName>()
-                val names = mutableListOf<String>()
-                for ((providerName, name) in Utils.TASK_PROVIDERS.zip(Utils.TASK_PROVIDER_NAMES)) {
-                    try {
-                        packageManager.getPackageInfo(providerName.packageName, 0)
-                        providerNames.add(providerName)
-                        names.add(getString(name))
-                    } catch (e: PackageManager.NameNotFoundException) {
-                    }
-                }
-                when (providerNames.size) {
-                    0 -> {
-                        val allNames = Utils.TASK_PROVIDER_NAMES.map { getString(it) }
-                        var providerName: TaskProvider.ProviderName? = null
-                        AlertDialog.Builder(this)
-                                .setTitle(R.string.no_task_app_title)
-                                .setSingleChoiceItems(allNames.toTypedArray(), -1) { _, which ->
-                                    providerName = Utils.TASK_PROVIDERS[which]
-                                }
-                                .setPositiveButton(android.R.string.ok) { _, _ ->
-                                    providerName?.let {
-                                        Utils.installApp(this, it.packageName)
-                                    }
-                                }
-                                .setNegativeButton(android.R.string.cancel, null)
-                                .show()
-                        return@OnItemClickListener
-                    }
-                    1 -> {
-                        val providerName = providerNames[0]
-                        PrefUtils.putTasksAuthority(this, providerName.authority)
-                    }
-                    else -> {
-                        var providerName: TaskProvider.ProviderName? = null
-                        AlertDialog.Builder(this)
-                                .setTitle(R.string.choose_task_app_title)
-                                .setSingleChoiceItems(names.toTypedArray(), -1) { _, which ->
-                                    providerName = providerNames[which]
-                                }
-                                .setPositiveButton(android.R.string.ok) { _, _ ->
-                                    providerName?.let {
-                                        PrefUtils.putTasksAuthority(this, it.authority)
-                                        task_lists.performItemClick(view, position, id)
-                                    }
-                                }
-                                .setNegativeButton(android.R.string.cancel, null)
-                                .show()
-                        return@OnItemClickListener
-                    }
-                }
+            val success = checkTaskListPermissions {
+                task_lists.performItemClick(view, position, id)
             }
+            if (!success) return@OnItemClickListener
         }
 
         val permissions = mutableListOf<String>()
@@ -848,7 +985,7 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
         }
 
         if (nowChecked) {
-            PrefUtils.putIsInitSync(this, info, true)
+            PrefUtils.putSyncKind(this, info, CollectionWorker.SYNC_KIND_INIT_SYNC)
             info.create(this)
             CollectionWorker.enqueue(this, info)
         } else {
@@ -913,6 +1050,8 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
                     AlertDialog.Builder(this)
                             .setMessage(getString(R.string.delete_collection_title, info.name))
                             .setPositiveButton(android.R.string.yes) { _, _ ->
+                                CollectionWorker.dequeue(this, info)
+                                info.remove(this)
                                 GlobalScope.launch {
                                     setCollectionInfo(info, JsonPrimitive("deleted"), JsonPrimitive(true))
                                 }
@@ -989,6 +1128,7 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
 
                         val nativeFile = nativeFile
                         val decsyncCount = if (nativeFile != null) {
+                            nativeFile.resetCache()
                             val latestAppId = getDecsync(info, this@MainActivity, nativeFile).latestAppId()
                             val countDecsync = Decsync<Count>(nativeFile, info.syncType, info.id, latestAppId)
                             countDecsync.addListener(emptyList()) { _, entry, count ->
@@ -1059,6 +1199,7 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
                                         is TaskListInfo -> task_lists.adapter
                                     } as CollectionAdapter
                                     adapter.remove(info)
+                                    deletedCollections.add(Pair(info.syncType, info.id))
                                 }
                             }
                             .setNegativeButton(android.R.string.no) { _, _ -> }

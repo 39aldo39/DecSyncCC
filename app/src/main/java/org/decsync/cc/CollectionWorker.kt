@@ -1,5 +1,6 @@
 package org.decsync.cc
 
+import android.accounts.Account
 import android.app.PendingIntent
 import android.content.ContentProviderClient
 import android.content.Context
@@ -15,6 +16,7 @@ import org.decsync.cc.contacts.ContactsWorker
 import org.decsync.cc.model.DecsyncDirectory
 import org.decsync.cc.tasks.TasksWorker
 import org.decsync.cc.ui.MainActivity
+import org.decsync.library.Decsync
 import org.decsync.library.NativeFile
 import java.lang.Exception
 import java.util.concurrent.TimeUnit
@@ -22,11 +24,17 @@ import java.util.concurrent.TimeUnit
 private const val TAG = "CollectionWorker"
 
 @ExperimentalStdlibApi
-abstract class CollectionWorker(val context: Context, params: WorkerParameters): CoroutineWorker(context, params) {
+abstract class CollectionWorker<Item>(val context: Context, params: WorkerParameters): CoroutineWorker(context, params) {
 
-    abstract val notificationTitleResId: Int
+    abstract val initSyncNotificationTitleResId: Int
     abstract fun getCollectionInfo(decsyncDir: DecsyncDirectory, id: String, name: String): CollectionInfo
     abstract suspend fun sync(info: CollectionInfo, provider: ContentProviderClient, nativeFile: NativeFile): Boolean
+
+    // Import functions
+    abstract val importNotificationTitleResId: Int
+    abstract fun getItems(provider: ContentProviderClient, info: CollectionInfo): List<Item>
+    abstract fun writeItemDecsync(decsync: Decsync<Extra>, item: Item)
+    abstract fun writeItemAndroid(info: CollectionInfo, provider: ContentProviderClient, item: Item)
 
     override suspend fun doWork(): Result {
         val dirName = inputData.getString(KEY_DIR_NAME) ?: return Result.failure()
@@ -40,44 +48,79 @@ abstract class CollectionWorker(val context: Context, params: WorkerParameters):
         val provider = info.getProviderClient(context) ?: return Result.failure()
         try {
             val nativeFile = decsyncDir.getNativeFile(context)
-            val isInitSync = PrefUtils.getIsInitSync(context, info)
-            if (isInitSync) {
-                val notification = initSyncNotificationBuilder(context).apply {
-                    setSmallIcon(R.drawable.ic_notification)
-                    setContentTitle(context.getString(notificationTitleResId, info.name))
-                }.build()
-                setForeground(ForegroundInfo(info.notificationId, notification))
-
-                val decsync = getDecsync(info, context, nativeFile)
-                val extra = Extra(info, context, provider)
-                setNumProcessedEntries(extra, 0)
-                decsync.initStoredEntries()
-                decsync.executeStoredEntriesForPathPrefix(listOf("resources"), extra)
-                PrefUtils.putIsInitSync(context, info, false)
-                return Result.success()
-            } else {
-                return try {
-                    val success = sync(info, provider, nativeFile)
-                    if (success) Result.success() else Result.failure()
-                } catch (e: Exception) {
-                    Log.e(TAG, "", e)
-                    val builder = errorNotificationBuilder(context).apply {
-                        setSmallIcon(R.drawable.ic_notification)
-                        if (PrefUtils.getUpdateForcesSaf(context)) {
-                            setContentTitle(context.getString(R.string.notification_saf_update_title))
-                            setContentText(context.getString(R.string.notification_saf_update_message))
-                        } else {
-                            setContentTitle("DecSync")
-                            setContentText(e.message)
+            val syncKind = PrefUtils.getSyncKind(context, info)
+            return when (syncKind) {
+                SYNC_KIND_STANDARD -> {
+                    try {
+                        val success = sync(info, provider, nativeFile)
+                        if (success) Result.success() else Result.failure()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "", e)
+                        val builder = errorNotificationBuilder(context).apply {
+                            setSmallIcon(R.drawable.ic_notification)
+                            if (PrefUtils.getUpdateForcesSaf(context)) {
+                                setContentTitle(context.getString(R.string.notification_saf_update_title))
+                                setContentText(context.getString(R.string.notification_saf_update_message))
+                            } else {
+                                setContentTitle("DecSync")
+                                setContentText(e.message)
+                            }
+                            setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), 0))
+                            setAutoCancel(true)
                         }
-                        setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), 0))
-                        setAutoCancel(true)
+                        with(NotificationManagerCompat.from(context)) {
+                            notify(0, builder.build())
+                        }
+                        Result.failure()
                     }
-                    with(NotificationManagerCompat.from(context)) {
-                        notify(0, builder.build())
-                    }
-                    Result.failure()
                 }
+                SYNC_KIND_INIT_SYNC -> {
+                    val notification = initSyncNotificationBuilder(context).apply {
+                        setSmallIcon(R.drawable.ic_notification)
+                        setContentTitle(context.getString(initSyncNotificationTitleResId, info.name))
+                    }.build()
+                    setForeground(ForegroundInfo(info.notificationId, notification))
+
+                    val decsync = getDecsync(info, context, nativeFile)
+                    val extra = Extra(info, context, provider)
+                    setNumProcessedEntries(extra, 0)
+                    decsync.initStoredEntries()
+                    decsync.executeStoredEntriesForPathPrefix(listOf("resources"), extra)
+                    PrefUtils.putSyncKind(context, info, SYNC_KIND_STANDARD)
+                    Result.success()
+                }
+                SYNC_KIND_IMPORT -> {
+                    val notification = importNotificationBuilder(context).apply {
+                        setSmallIcon(R.drawable.ic_notification)
+                        setContentTitle(context.getString(importNotificationTitleResId, info.name))
+                    }
+                    setForeground(ForegroundInfo(info.notificationId, notification.build()))
+
+                    val decsync = getDecsync(info, context, nativeFile)
+                    val extra = Extra(info, context, provider)
+
+                    val items = getItems(provider, info)
+                    Log.d(TAG, "Importing ${items.size} items")
+                    for (i in items.indices) {
+                        val item = items[i]
+                        Log.i(TAG, "Importing item $item")
+                        notification.apply {
+                            setProgress(items.size, i, false)
+                        }
+                        with(NotificationManagerCompat.from(context)) {
+                            notify(info.notificationId, notification.build())
+                        }
+                        writeItemDecsync(decsync, item)
+                        writeItemAndroid(info, provider, item)
+                        addToNumProcessedEntries(extra, 1)
+                    }
+
+                    PrefUtils.putSyncKind(context, info, SYNC_KIND_STANDARD)
+                    PrefUtils.removeImportedAccount(context, info)
+                    PrefUtils.removeImportedCalendarId(context, info)
+                    Result.success()
+                }
+                else -> Result.failure()
             }
         } finally {
             if (Build.VERSION.SDK_INT >= 24)
@@ -92,6 +135,10 @@ abstract class CollectionWorker(val context: Context, params: WorkerParameters):
         const val KEY_DIR_NAME = "KEY_DIR_NAME"
         const val KEY_ID = "KEY_ID"
         const val KEY_NAME = "KEY_NAME"
+
+        const val SYNC_KIND_STANDARD = 0
+        const val SYNC_KIND_INIT_SYNC = 1
+        const val SYNC_KIND_IMPORT = 2
 
         fun enqueue(context: Context, info: CollectionInfo) {
             val workManager = WorkManager.getInstance(context)
