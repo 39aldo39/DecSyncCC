@@ -105,7 +105,6 @@ object ContactsListeners {
                     val values = ContentValues()
                     values.put(RawContacts._ID, id)
                     LocalContact(addressBook, values).delete()
-                    addToNumProcessedEntries(extra, -1)
                 }
             }
             else -> {
@@ -122,7 +121,6 @@ object ContactsListeners {
                 if (id == null) {
                     Log.d(TAG, "Add contact $uid")
                     LocalContact(addressBook, contact, uid, bookId).add()
-                    addToNumProcessedEntries(extra, 1)
                 } else {
                     Log.d(TAG, "Update contact $uid")
                     val values = ContentValues()

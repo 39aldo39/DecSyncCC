@@ -28,21 +28,6 @@ class LocalTaskList private constructor(
         return null
     }
 
-    var numProcessedEntries: Int
-    get() {
-        provider.client.query(taskListSyncUri(), arrayOf(TasksUtils.COLUMN_NUM_PROCESSED_ENTRIES),
-                null, null, null)?.use { cursor ->
-            if (cursor.moveToNext())
-                return cursor.getInt(0)
-        }
-        return 0
-    }
-    set(value) {
-        val values = ContentValues()
-        values.put(TasksUtils.COLUMN_NUM_PROCESSED_ENTRIES, value)
-        provider.client.update(taskListSyncUri(), values, null, null)
-    }
-
     companion object {
         fun create(account: Account, provider: TaskProvider, info: TaskListInfo): Uri {
             val color = info.color ?: Color.BLACK

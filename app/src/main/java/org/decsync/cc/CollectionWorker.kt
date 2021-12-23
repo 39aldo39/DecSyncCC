@@ -1,6 +1,5 @@
 package org.decsync.cc
 
-import android.accounts.Account
 import android.app.PendingIntent
 import android.content.ContentProviderClient
 import android.content.Context
@@ -83,7 +82,6 @@ abstract class CollectionWorker<Item>(val context: Context, params: WorkerParame
 
                     val decsync = getDecsync(info, context, nativeFile)
                     val extra = Extra(info, context, provider)
-                    setNumProcessedEntries(extra, 0)
                     decsync.initStoredEntries()
                     decsync.executeStoredEntriesForPathPrefix(listOf("resources"), extra)
                     PrefUtils.putSyncKind(context, info, SYNC_KIND_STANDARD)
@@ -112,7 +110,6 @@ abstract class CollectionWorker<Item>(val context: Context, params: WorkerParame
                         }
                         writeItemDecsync(decsync, item)
                         writeItemAndroid(info, provider, item)
-                        addToNumProcessedEntries(extra, 1)
                     }
 
                     PrefUtils.putSyncKind(context, info, SYNC_KIND_STANDARD)

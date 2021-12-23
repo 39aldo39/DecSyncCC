@@ -26,7 +26,6 @@ import at.bitfire.ical4android.*
 import kotlinx.serialization.json.*
 import org.decsync.cc.Extra
 import org.decsync.cc.Utils
-import org.decsync.cc.addToNumProcessedEntries
 import org.decsync.cc.contacts.syncAdapterUri
 import org.decsync.library.Decsync
 import java.io.StringReader
@@ -108,7 +107,6 @@ object CalendarsListeners {
                     val values = ContentValues()
                     values.put(Events._ID, id)
                     LocalEvent(calendar, values).delete()
-                    addToNumProcessedEntries(extra, -1)
                 }
             }
             else -> {
@@ -130,7 +128,6 @@ object CalendarsListeners {
                 if (id == null) {
                     Log.d(TAG, "Add event $uid")
                     LocalEvent(calendar, event).add()
-                    addToNumProcessedEntries(extra, 1)
                 } else {
                     Log.d(TAG, "Update event $uid")
                     val values = ContentValues()

@@ -9,9 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.ContactsContract
 import org.decsync.cc.AddressBookInfo
-import org.decsync.cc.CollectionInfo
 import org.decsync.cc.Extra
-import org.decsync.cc.KEY_NUM_PROCESSED_ENTRIES
 
 @ExperimentalStdlibApi
 object ContactsUtils {
@@ -25,7 +23,6 @@ object ContactsUtils {
         accountManager.setUserData(newAccount, AddressBookInfo.KEY_DECSYNC_DIR_ID, newInfo.decsyncDir.id.toString()) // Separate, since the account may exist
         accountManager.setUserData(newAccount, AddressBookInfo.KEY_COLLECTION_ID, newInfo.id)
         accountManager.setUserData(newAccount, AddressBookInfo.KEY_NAME, newInfo.name)
-        accountManager.setUserData(newAccount, KEY_NUM_PROCESSED_ENTRIES, null)
         ContentResolver.setSyncAutomatically(newAccount, ContactsContract.AUTHORITY, true)
         ContentResolver.addPeriodicSync(newAccount, ContactsContract.AUTHORITY, Bundle(), 60 * 60)
 

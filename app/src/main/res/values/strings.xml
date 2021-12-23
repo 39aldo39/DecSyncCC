@@ -76,7 +76,7 @@
     <string name="choose_task_app_title">Multiple task apps installed. Choose one to use.</string>
     <string name="entries_count">Entries count</string>
     <string name="entries_count_title">Entries count</string>
-    <string name="entries_count_message">Android entries: %d\nProcessed entries: %d\nDecSync entries: %s</string>
+    <string name="entries_count_message">Android entries: %d\nDecSync entries: %s</string>
     <string name="manage_decsync_data">Manage DecSync data</string>
     <string name="account_settings">Settings</string>
     <string name="account_collection_name_default">Personal</string>

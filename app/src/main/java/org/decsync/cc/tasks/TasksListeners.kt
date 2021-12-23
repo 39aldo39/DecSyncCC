@@ -9,7 +9,6 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.decsync.cc.Extra
 import org.decsync.cc.TaskListInfo
-import org.decsync.cc.addToNumProcessedEntries
 import org.decsync.library.Decsync
 import org.dmfs.tasks.contract.TaskContract
 import java.io.StringReader
@@ -85,7 +84,6 @@ object TasksListeners {
                 } else {
                     Log.d(TAG, "Delete task $uid")
                     storedTask.delete()
-                    addToNumProcessedEntries(extra, -1)
                 }
             }
             else -> {
@@ -107,7 +105,6 @@ object TasksListeners {
                 if (storedTask == null) {
                     Log.d(TAG, "Add task $uid")
                     LocalTask(taskList, task).add()
-                    addToNumProcessedEntries(extra, 1)
                 } else {
                     Log.d(TAG, "Update task $uid")
                     storedTask.update(task)

@@ -99,25 +99,20 @@ class CalendarsWorker(context: Context, params: WorkerParameters) : CollectionWo
                         val values = ContentValues()
                         values.put(Events._ID, id)
                         LocalEvent(calendar, values).writeDeleteAction(decsync)
-                        addToNumProcessedEntries(extra, -1)
                     }
                 }
 
                 // Detect dirty events
                 provider.query(syncAdapterUri(account, Events.CONTENT_URI),
-                        arrayOf(Events._ID, Events.ORIGINAL_ID, Events._SYNC_ID),
+                        arrayOf(Events._ID, Events.ORIGINAL_ID),
                         "${Events.CALENDAR_ID}=? AND ${Events.DIRTY}=1",
                         arrayOf(calendarId.toString()), null)!!.use { cursor ->
                     while (cursor.moveToNext()) {
                         val id = cursor.getString(1) ?: cursor.getString(0)
-                        val newEvent = cursor.isNull(1) && cursor.isNull(2)
 
                         val values = ContentValues()
                         values.put(Events._ID, id)
                         LocalEvent(calendar, values).writeUpdateAction(decsync)
-                        if (newEvent) {
-                            addToNumProcessedEntries(extra, 1)
-                        }
                     }
                 }
 

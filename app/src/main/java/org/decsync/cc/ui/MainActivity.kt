@@ -1061,7 +1061,6 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
                 }
                 R.id.entries_count -> {
                     var androidEntries = 0
-                    var processedEntries = 0
 
                     val permissions = mutableListOf<String>()
                     for (permission in info.getPermissions(this)) {
@@ -1074,8 +1073,6 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
                             try {
                                 when (info) {
                                     is AddressBookInfo -> {
-                                        processedEntries = AccountManager.get(this).getUserData(info.getAccount(this), KEY_NUM_PROCESSED_ENTRIES)?.toInt()
-                                                ?: 0
                                         provider.query(syncAdapterUri(info.getAccount(this), RawContacts.CONTENT_URI),
                                                 emptyArray(), "${RawContacts.DELETED}=0",
                                                 null, null)!!.use { cursor ->
@@ -1084,10 +1081,9 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
                                     }
                                     is CalendarInfo -> {
                                         val calendarId = provider.query(syncAdapterUri(info.getAccount(this), Calendars.CONTENT_URI),
-                                                arrayOf(Calendars._ID, CalendarsUtils.COLUMN_NUM_PROCESSED_ENTRIES), "${Calendars.NAME}=?",
+                                                arrayOf(Calendars._ID), "${Calendars.NAME}=?",
                                                 arrayOf(info.id), null)!!.use { calCursor ->
                                             if (calCursor.moveToFirst()) {
-                                                processedEntries = if (calCursor.isNull(1)) 0 else calCursor.getInt(1)
                                                 calCursor.getLong(0)
                                             } else {
                                                 null
@@ -1101,7 +1097,6 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
                                     }
                                     is TaskListInfo -> {
                                         val taskList = info.getTaskList(this)
-                                        processedEntries = taskList?.numProcessedEntries ?: 0
                                         androidEntries = taskList?.queryTasks("${TaskContract.Tasks._DELETED}=0", null)?.size
                                                 ?: 0
                                     }
@@ -1118,7 +1113,7 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
 
                     val dialog = AlertDialog.Builder(this)
                             .setTitle(R.string.entries_count_title)
-                            .setMessage(getString(R.string.entries_count_message, androidEntries, processedEntries, "…"))
+                            .setMessage(getString(R.string.entries_count_message, androidEntries, "…"))
                             .setNeutralButton(android.R.string.ok) { dialog, _ ->
                                 dialog.dismiss()
                             }
@@ -1143,7 +1138,7 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
                         } else {
                             "-"
                         }
-                        dialog.setMessage(getString(R.string.entries_count_message, androidEntries, processedEntries, decsyncCount))
+                        dialog.setMessage(getString(R.string.entries_count_message, androidEntries, decsyncCount))
                     }
                     dialog.setOnDismissListener {
                         countJob.cancel()

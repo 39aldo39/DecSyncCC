@@ -31,7 +31,7 @@
     <string name="delete_collection_title">¿Estás seguro que quieres borrar la colección \'%s\'?</string>
     <string name="entries_count">Entradas contadas</string>
     <string name="entries_count_title">Entradas contadas</string>
-    <string name="entries_count_message">Entradas Android: %d\nEntradas procesadas: %d\nEntradas DecSync: %s</string>
+    <string name="entries_count_message">Entradas Android: %d\nEntradas DecSync: %s</string>
     <string name="account_settings">Ajustes</string>
     
     <!-- Notifications -->

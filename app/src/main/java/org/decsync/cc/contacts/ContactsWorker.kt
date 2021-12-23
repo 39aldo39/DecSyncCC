@@ -84,7 +84,6 @@ class ContactsWorker(context: Context, params: WorkerParameters) : CollectionWor
                 values.put(RawContacts._ID, id)
                 values.put(LocalContact.COLUMN_LOCAL_UID, uid)
                 LocalContact(addressBook, values).writeDeleteAction(decsync)
-                addToNumProcessedEntries(extra, -1)
             }
         }
 
@@ -102,9 +101,6 @@ class ContactsWorker(context: Context, params: WorkerParameters) : CollectionWor
                 values.put(LocalContact.COLUMN_LOCAL_UID, uid)
                 values.put(LocalContact.COLUMN_LOCAL_BOOKID, info.id)
                 LocalContact(addressBook, values).writeUpdateAction(decsync)
-                if (newContact) {
-                    addToNumProcessedEntries(extra, 1)
-                }
             }
         }
 

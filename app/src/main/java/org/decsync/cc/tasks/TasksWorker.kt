@@ -1,7 +1,6 @@
 package org.decsync.cc.tasks
 
 import android.Manifest
-import android.accounts.Account
 import android.accounts.AccountManager
 import android.content.*
 import android.content.pm.PackageManager
@@ -69,7 +68,6 @@ class TasksWorker(context: Context, params: WorkerParameters) : CollectionWorker
         val deletedTasks = taskList.queryTasks(TaskContract.Tasks._DELETED, null)
         for (task in deletedTasks) {
             task.writeDeleteAction(decsync)
-            addToNumProcessedEntries(extra, -1)
         }
 
         // Detect dirty tasks
@@ -79,7 +77,6 @@ class TasksWorker(context: Context, params: WorkerParameters) : CollectionWorker
             val isNewTask = task.isNewTask
             if (isNewTask) {
                 task.isNewTask = false
-                addToNumProcessedEntries(extra, 1)
             }
         }
 

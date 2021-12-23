@@ -52,7 +52,7 @@
     <string name="choose_task_app_title">安装了多款任务应用程序。 选择一款来使用。</string>
     <string name="entries_count">条目数</string>
     <string name="entries_count_title">条目数</string>
-    <string name="entries_count_message">安卓条目: %d\n已处理条目: %d\nDecSync 条目: %s</string>
+    <string name="entries_count_message">安卓条目: %d\nDecSync 条目: %s</string>
     <string name="manage_decsync_data">管理 DecSync 数据</string>
     <string name="account_settings">设置</string>
     <string name="account_collection_name_default">个人</string>

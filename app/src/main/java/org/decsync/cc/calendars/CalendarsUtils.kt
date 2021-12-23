@@ -13,7 +13,6 @@ import at.bitfire.ical4android.AndroidEvent
 @ExperimentalStdlibApi
 object CalendarsUtils {
     const val COLUMN_OLD_COLOR = CalendarContract.Calendars.CAL_SYNC1
-    const val COLUMN_NUM_PROCESSED_ENTRIES = CalendarContract.Calendars.CAL_SYNC2
 
     fun addColor(values: ContentValues, color: Int) {
         values.put(CalendarContract.Calendars.CALENDAR_COLOR, color)
