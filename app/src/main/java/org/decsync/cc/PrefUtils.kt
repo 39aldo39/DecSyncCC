@@ -19,6 +19,7 @@
 package org.decsync.cc
 
 import android.accounts.Account
+import android.accounts.AccountManager
 import android.content.Context
 import android.os.Build
 import android.os.Environment
@@ -305,6 +306,15 @@ object PrefUtils {
                         )
                         val dirId = App.db.decsyncDirectoryDao().insert(decsyncDir)
                         putSelectedDir(context, dirId)
+
+                        // Migrate contacts accounts
+                        val accountManager = AccountManager.get(context)
+                        val accounts = accountManager.getAccountsByType(context.getString(R.string.account_type_contacts))
+                        for (account in accounts) {
+                            accountManager.setUserData(account, AddressBookInfo.KEY_DECSYNC_DIR_ID, dirId.toString())
+                            accountManager.setUserData(account, AddressBookInfo.KEY_NAME, account.name)
+                            // AddressBookInfo.KEY_COLLECTION_ID is already present
+                        }
                     }
                 }
             }
