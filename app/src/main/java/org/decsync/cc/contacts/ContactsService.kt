@@ -30,6 +30,7 @@ import org.decsync.cc.App
 import org.decsync.cc.CollectionInfo
 import org.decsync.cc.CollectionWorker
 
+@ExperimentalStdlibApi
 class ContactsService : Service() {
 
     private var mContactsSyncAdapter: ContactsSyncAdapter? = null
@@ -44,7 +45,6 @@ class ContactsService : Service() {
     override fun onBind(intent: Intent): IBinder? = mContactsSyncAdapter?.syncAdapterBinder
 
     internal inner class ContactsSyncAdapter(context: Context, autoInitialize: Boolean) : AbstractThreadedSyncAdapter(context, autoInitialize) {
-        @ExperimentalStdlibApi
         override fun onPerformSync(account: Account, extras: Bundle,
                                    authority: String, provider: ContentProviderClient,
                                    syncResult: SyncResult) {
