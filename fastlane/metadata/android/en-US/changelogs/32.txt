@@ -1,0 +1,5 @@
+- Add support for multiple DecSync directories (#56)
+- Add support for importing existing accounts
+- Change sync interval from 60 to 15 minutes (#53)
+- Improve the introduction
+- Don't crash on reading an empty file (#68)
