@@ -9,17 +9,17 @@
 <resources>
     <string name="app_name" translatable="false">DecSync CC</string>
     <string name="title_activity_main" translatable="false">DecSync CC</string>
-	  <string name="title_activity_main_with_dir">DecSync CC (%s)</string>
+    <string name="title_activity_main_with_dir">DecSync CC (%s)</string>
     <string name="title_activity_settings">设置</string>
     <string name="title_activity_intro">介绍</string>
     <string name="title_activity_saf_update">安卓更新</string>
-	  <string name="title_activity_add_directory">添加 DecSync 目录</string>
+    <string name="title_activity_add_directory">添加 DecSync 目录</string>
 
     <string name="account_name_contacts">DecSync 联系人</string>
     <string name="account_name_calendars">DecSync 日历</string>
-	  <string name="account_name_calendars_with_dir_name">DecSync 日历 (%s)</string>
+    <string name="account_name_calendars_with_dir_name">DecSync 日历 (%s)</string>
     <string name="account_name_tasks">DecSync 任务</string>
-	  <string name="account_name_tasks_with_dir_name">DecSync 任务 (%s)</string>
+    <string name="account_name_tasks_with_dir_name">DecSync 任务 (%s)</string>
     <string name="account_type_contacts" translatable="false">org.decsync.contacts</string>
     <string name="account_type_calendars" translatable="false">org.decsync.calendars</string>
     <string name="account_type_tasks" translatable="false">org.decsync.tasks</string>
@@ -47,9 +47,9 @@
     <string name="account_calendars_unknown">日历 (未知)</string>
     <string name="account_task_lists">任务列表</string>
     <string name="account_task_lists_unknown">任务列表 (未知)</string>
-	  <string name="account_collection_empty">无集锦</string>
+    <string name="account_collection_empty">无集锦</string>
     <string name="account_synchronize_now">立即同步</string>
-	  <string name="account_show_deleted_collections">显示删除的集锦</string>
+    <string name="account_show_deleted_collections">显示删除的集锦</string>
     <string name="account_synchronizing_now">同步中</string>
     <string name="account_synchronize_this_collection">同步此集锦</string>
     <string name="account_refresh_address_book_list">刷新通讯簿列表</string>
@@ -57,7 +57,7 @@
     <string name="account_refresh_calendar_list">刷新日历列表</string>
     <string name="account_create_new_calendar">新建日历</string>
     <string name="account_create_new_task_list">新建任务列表</string>
-	  <string name="create_new_collection">新集锦</string>
+    <string name="create_new_collection">新集锦</string>
     <string name="import_existing_collection">导入现有集锦</string>
     <string name="select_account">选择账户</string>
     <string name="no_accounts">未找到账户</string>
@@ -66,10 +66,10 @@
     <string name="create_collection_title">新集锦的名称</string>
     <string name="rename_collection">重命名集锦</string>
     <string name="rename_collection_title">集锦的新名称</string>
-	  <string name="change_color_collection">更改颜色</string>
+    <string name="change_color_collection">更改颜色</string>
     <string name="delete_collection">删除集锦</string>
     <string name="delete_collection_title">你确定要删除集锦 \'%s\'吗？</string>
-	  <string name="restore_collection">恢复集锦</string>
+    <string name="restore_collection">恢复集锦</string>
     <string name="perm_delete_collection">永久性删除集锦</string>
     <string name="perm_delete_collection_title">你确定想永久删除集锦  \'%s\' 吗？</string>
     <string name="no_task_app_title">未安装任务应用程序。 选择一款进行安装。</string>
@@ -77,16 +77,16 @@
     <string name="entries_count">条目数</string>
     <string name="entries_count_title">条目数</string>
     <string name="entries_count_message">Android 条目: %d\nDecSync 条目: %s</string>
-	  <string name="manage_decsync_data">管理 DecSync 数据</string>
+    <string name="manage_decsync_data">管理 DecSync 数据</string>
     <string name="account_settings">设置</string>
-	  <string name="account_collection_name_default">个人</string>
+    <string name="account_collection_name_default">个人</string>
     <string name="account_collection_name_default_n">个人 %d</string>
 
     <!-- Notifications -->
     <string name="notification_adding_contacts">正在添加 %s 的联系人</string>
     <string name="notification_adding_events">正在添加 %s 的事件</string>
     <string name="notification_adding_tasks">正在添加 %s 的任务</string>
-	  <string name="notification_importing_contacts">将联系人导入到 %s</string>
+    <string name="notification_importing_contacts">将联系人导入到 %s</string>
     <string name="notification_importing_events">将日历事件导入到 %s</string>
     <string name="notification_importing_tasks">将任务导入到 %s</string>
     <string name="notification_saf_update_title">新的安卓版本</string>
@@ -94,7 +94,7 @@
 
     <!-- IntroActivity -->
     <string name="intro_welcome_title">欢迎来到 DecSync CC</string>
-	  <string name="intro_welcome_desc">DecSync CC 使用 DecSync 同步联系人、日历和任务\n\n它使用 Syncthing、谷歌云盘、Dropbox 或任何其他文件同步服务将这些数据存储在共享目录中。</string>
+    <string name="intro_welcome_desc">DecSync CC 使用 DecSync 同步联系人、日历和任务\n\n它使用 Syncthing、谷歌云盘、Dropbox 或任何其他文件同步服务将这些数据存储在共享目录中。</string>
     <string name="intro_syncthing_title">Syncthing</string>
     <string name="intro_syncthing_desc">Syncthing 直接在设备之间同步文件，不需要将数据集中存储，也不需要服务器\n\nDecSync CC 适用于任何文件同步服务，但建议使用 Syncthing，因为你的数据留在你的设备上</string>
     <string name="intro_syncthing_button">安装 Syncthing</string>
@@ -160,7 +160,7 @@
     <!-- Notification channel -->
     <string name="channel_init_sync_name">初始同步</string>
     <string name="channel_init_sync_description">初始同步期间显示的通知</string>
-	  <string name="channel_import_name">导入</string>
+    <string name="channel_import_name">导入</string>
     <string name="channel_import_description">导入期间显示的通知</string>
     <string name="channel_error_name">错误</string>
     <string name="channel_error_description">出错时显示的通知</string>
