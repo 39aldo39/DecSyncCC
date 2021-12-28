@@ -1,0 +1,1 @@
+Fix potential background crash after upgrade
