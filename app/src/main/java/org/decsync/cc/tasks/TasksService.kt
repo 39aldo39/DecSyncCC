@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.IBinder
 import kotlinx.coroutines.runBlocking
 import org.decsync.cc.App
+import org.decsync.cc.PrefUtils
 
 @ExperimentalStdlibApi
 open class TasksService : Service() {
@@ -29,6 +30,7 @@ open class TasksService : Service() {
             // Only queue as the SyncAdapter is canceled when it doesn't use the internet in the first minute
             // Mainly used to get notified about changes in the data
             runBlocking {
+                PrefUtils.checkAppUpgrade(context)
                 val decsyncDir = App.db.decsyncDirectoryDao().findByTaskListAccountName(account.name)
                 if (decsyncDir != null) {
                     TasksWorker.enqueueDir(context, decsyncDir)

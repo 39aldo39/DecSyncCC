@@ -25,10 +25,7 @@ import android.content.*
 import android.os.Bundle
 import android.os.IBinder
 import kotlinx.coroutines.runBlocking
-import org.decsync.cc.AddressBookInfo
-import org.decsync.cc.App
-import org.decsync.cc.CollectionInfo
-import org.decsync.cc.CollectionWorker
+import org.decsync.cc.*
 
 @ExperimentalStdlibApi
 class ContactsService : Service() {
@@ -51,6 +48,7 @@ class ContactsService : Service() {
             // Only queue as the SyncAdapter is canceled when it doesn't use the internet in the first minute
             // Mainly used to get notified about changes in the data
             runBlocking {
+                PrefUtils.checkAppUpgrade(context)
                 val accountManager = AccountManager.get(context)
                 val dirId = accountManager.getUserData(account, AddressBookInfo.KEY_DECSYNC_DIR_ID).toLong()
                 val decsyncDir = App.db.decsyncDirectoryDao().find(dirId)

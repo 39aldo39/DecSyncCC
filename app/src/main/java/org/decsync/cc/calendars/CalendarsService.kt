@@ -25,6 +25,7 @@ import android.os.Bundle
 import android.os.IBinder
 import kotlinx.coroutines.runBlocking
 import org.decsync.cc.App
+import org.decsync.cc.PrefUtils
 
 @ExperimentalStdlibApi
 class CalendarsService : Service() {
@@ -47,6 +48,7 @@ class CalendarsService : Service() {
             // Only queue as the SyncAdapter is canceled when it doesn't use the internet in the first minute
             // Mainly used to get notified about changes in the data
             runBlocking {
+                PrefUtils.checkAppUpgrade(context)
                 val decsyncDir = App.db.decsyncDirectoryDao().findByCalendarAccountName(account.name)
                 if (decsyncDir != null) {
                     CalendarsWorker.enqueueDir(context, decsyncDir)
