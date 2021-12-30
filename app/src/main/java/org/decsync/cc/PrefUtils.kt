@@ -51,7 +51,7 @@ object PrefUtils {
     const val SHOW_DELETED_COLLECTIONS = "show_deleted_collections"
     const val SELECTED_DIR = "selected_dir"
 
-    val currentAppVersion = 5
+    val currentAppVersion = 6
     val defaultDecsyncDir = "${Environment.getExternalStorageDirectory()}/DecSync"
 
     fun getAppVersion(context: Context): Int {
@@ -282,18 +282,18 @@ object PrefUtils {
                 if (appVersion < 3) {
                     putIntroDone(context, true)
                 }
-                if (appVersion < 4) {
-                    ContactsWorker.enqueueAll(context)
-                    CalendarsWorker.enqueueAll(context)
-                    TasksWorker.enqueueAll(context)
-                }
-                if (appVersion < 5) {
-                    val directory = if (getUseSaf(context)) {
-                        DecsyncPrefUtils.getDecsyncDir(context)?.toString()
-                    } else {
-                        getDecsyncFile(context).path
-                    }
-                    if (directory != null) {
+                if (appVersion < 6) {
+                    // Migrate to database
+                    val dirId = if (App.db.decsyncDirectoryDao().all().isEmpty()) {
+                        val directory = if (getUseSaf(context)) {
+                            DecsyncPrefUtils.getDecsyncDir(context)?.toString() ?: run {
+                                // UseSaf probably not stored and defaulted incorrectly
+                                putUseSaf(context, false)
+                                getDecsyncFile(context).path
+                            }
+                        } else {
+                            getDecsyncFile(context).path
+                        }
                         val dirName = context.getString(R.string.decsync_dir_name_default)
                         val calendarAccountName = getCalendarAccountName(context)
                         val taskListAccountName = getTasksAccountName(context)
@@ -306,16 +306,25 @@ object PrefUtils {
                         )
                         val dirId = App.db.decsyncDirectoryDao().insert(decsyncDir)
                         putSelectedDir(context, dirId)
-
-                        // Migrate contacts accounts
-                        val accountManager = AccountManager.get(context)
-                        val accounts = accountManager.getAccountsByType(context.getString(R.string.account_type_contacts))
-                        for (account in accounts) {
-                            accountManager.setUserData(account, AddressBookInfo.KEY_DECSYNC_DIR_ID, dirId.toString())
-                            accountManager.setUserData(account, AddressBookInfo.KEY_NAME, account.name)
-                            // AddressBookInfo.KEY_COLLECTION_ID is already present
-                        }
+                        dirId
+                    } else {
+                        getSelectedDir(context)
                     }
+
+                    // Migrate contacts accounts
+                    val accountManager = AccountManager.get(context)
+                    val accounts = accountManager.getAccountsByType(context.getString(R.string.account_type_contacts))
+                    for (account in accounts) {
+                        if (accountManager.getUserData(account, AddressBookInfo.KEY_DECSYNC_DIR_ID) != null) continue
+                        accountManager.setUserData(account, AddressBookInfo.KEY_DECSYNC_DIR_ID, dirId.toString())
+                        accountManager.setUserData(account, AddressBookInfo.KEY_NAME, account.name)
+                        // AddressBookInfo.KEY_COLLECTION_ID is already present
+                    }
+
+                    // Requeue workers
+                    ContactsWorker.enqueueAll(context)
+                    CalendarsWorker.enqueueAll(context)
+                    TasksWorker.enqueueAll(context)
                 }
             }
             putAppVersion(context, currentAppVersion)
