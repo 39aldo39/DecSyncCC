@@ -1138,7 +1138,9 @@ class MainActivity: AppCompatActivity(), NavigationView.OnNavigationItemSelected
                         } else {
                             "-"
                         }
-                        dialog.setMessage(getString(R.string.entries_count_message, androidEntries, decsyncCount))
+                        CoroutineScope(Dispatchers.Main).launch {
+                            dialog.setMessage(getString(R.string.entries_count_message, androidEntries, decsyncCount))
+                        }
                     }
                     dialog.setOnDismissListener {
                         countJob.cancel()
