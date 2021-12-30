@@ -1,0 +1,3 @@
+- Fix migration after upgrade (#79)
+- Fix rare crash when viewing the entries count
+- Fix navigation logo
