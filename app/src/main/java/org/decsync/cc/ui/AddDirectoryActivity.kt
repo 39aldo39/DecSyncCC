@@ -23,7 +23,9 @@ import kotlinx.coroutines.launch
 import org.decsync.cc.App
 import org.decsync.cc.PrefUtils
 import org.decsync.cc.R
+import org.decsync.cc.Utils.showBasicDialog
 import org.decsync.cc.model.DecsyncDirectory
+import org.decsync.library.DecsyncException
 import org.decsync.library.DecsyncPrefUtils
 import org.decsync.library.checkDecsyncInfo
 
@@ -140,9 +142,13 @@ class SlideAddDirectory : Fragment(), SlidePolicy {
                     val oldDir = PrefUtils.getDecsyncFile(requireActivity())
                     val newDir = Utils.getFileForUri(uri)
                     if (oldDir != newDir) {
-                        checkDecsyncInfo(newDir)
-                        PrefUtils.putDecsyncFile(requireActivity(), newDir)
-                        add_directory_button.text = newDir.path
+                        try {
+                            checkDecsyncInfo(newDir)
+                            PrefUtils.putDecsyncFile(requireActivity(), newDir)
+                            add_directory_button.text = newDir.path
+                        } catch (e: DecsyncException) {
+                            showBasicDialog(requireActivity(), "DecSync", e.message)
+                        }
                     }
                 }
             }
